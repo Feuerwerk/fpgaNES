@@ -1,0 +1,13 @@
+simulation/
+incremental_db/
+db/
+.qsys_edit/
+output_files/
+greybox_tmp/
+*.rpt
+*.bak
+PLLJ_PLLSPE_INFO.txt
+c5_pin_model_dump.txt
+*.pof
+test_modules/
+nes.map
