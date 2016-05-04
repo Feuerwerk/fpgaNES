@@ -1564,6 +1564,13 @@ architecture behavioral of apu is
 	signal s_dmc_request : std_logic;
 	signal s_dmc_addr : std_logic_vector(15 downto 0);
 	signal s_dmc_int_pending : std_logic;
+	signal s_clock_trigger : std_logic := '0';
+	signal s_frame_int_trigger : boolean;
+	signal s_frame_int_active : std_logic;
+	signal s_data : std_logic_vector(7 downto 0) := x"00";
+	signal s_data_sync : std_logic_vector(7 downto 0);
+	signal s_r17_written : boolean := false;
+	signal s_write_r17_sync : boolean;
 
 begin
 
@@ -1682,7 +1689,7 @@ begin
 	
 	s_square_sum <= ('0' & s_square1_q) + ('0' & s_square2_q);
 	s_square_index <= to_integer(unsigned(s_square_sum));
-	s_tnd_sum <= s_triangle_q * x"3" + (s_noise_q & '0') + s_dmc_q;
+	s_tnd_sum <= s_triangle_q * x"3" + ("000" & s_noise_q & '0') + ('0' & s_dmc_q);
 	s_tnd_index <= to_integer(unsigned(s_tnd_sum));
 	o_audio <= SQUARE_LOOKUP(s_square_index) + TND_LOOKUP(s_tnd_index);
 	
@@ -1694,8 +1701,8 @@ begin
 			if i_reset_n = '0' then
 				s_int_disable <= '0';
 			elsif i_clk_enable = '1' then
-				if s_write_r17 then
-					s_int_disable <= i_data(6);
+				if s_write_r17_sync then
+					s_int_disable <= s_data_sync(6);
 				end if;
 			end if;
 		end if;
@@ -1709,9 +1716,9 @@ begin
 			if i_reset_n = '0' then
 				s_frame_int_pending <= '0';
 			elsif i_clk_enable = '1' then
-				if s_write_r17 and (i_data(6) = '1') then
+				if s_write_r17_sync and (s_data_sync(6) = '1') then
 					s_frame_int_pending <= '0';
-				elsif (s_clk_divider = 29829) and (s_int_disable = '0') then
+				elsif s_frame_int_trigger then
 					s_frame_int_pending <= '1';
 				elsif s_read_r15 then
 					s_frame_int_pending <= '0';
@@ -1720,30 +1727,39 @@ begin
 		end if;
 	end process;
 	
-	o_int_n <= not (s_frame_int_pending or s_dmc_int_pending);
-	
-	-- OMA-DMA
-	
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
-				s_oma_addr <= x"00";
-			elsif (i_clk_enable = '1') and (s_write_r14 = '1') then
-				s_oma_addr <= i_data;
+				s_frame_int_trigger <= false;
+			elsif i_clk_enable = '1' then
+				if (s_clk_divider = 29829) and (s_int_disable = '0') and (s_mode = '0') then
+					s_frame_int_trigger <= true;
+				else
+					s_frame_int_trigger <= false;
+				end if;
 			end if;
 		end if;
 	end process;
 	
-	-- Frame Sequencer
+	o_int_n <= not (s_frame_int_pending or s_dmc_int_pending);
+	s_frame_int_active <= '1' when s_frame_int_trigger else s_frame_int_pending;
 	
+	-- Frame Sequencer
+
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_mode <= '0';
-			elsif (i_clk_enable = '1') and s_write_r17 then
-				s_mode <= i_data(7);
+				s_clock_trigger <= '0';
+			elsif i_clk_enable = '1' then
+				s_clock_trigger <= '0';
+			
+				if s_write_r17_sync then
+					s_mode <= s_data_sync(7);
+					s_clock_trigger <= s_data_sync(7);
+				end if;
 			end if;
 		end if;
 	end process;
@@ -1754,7 +1770,7 @@ begin
 			if i_reset_n = '0' then
 				s_clk_divider <= 0;
 			elsif i_clk_enable = '1' then
-				if s_write_r17 or (s_last_clk = '1') then
+				if s_write_r17_sync or (s_last_clk = '1') then
 					s_clk_divider <= 0;
 				else
 					s_clk_divider <= s_clk_divider + 1;
@@ -1767,6 +1783,54 @@ begin
 	begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
+				s_envelope_signal <= '0';
+				s_lcounter_signal <= '0';
+				s_apu_signal <= '1';
+			elsif i_clk_enable = '1' then
+				s_apu_signal <= not s_apu_signal;
+			
+				if s_clock_trigger = '1' then
+					s_envelope_signal <= '1';
+					s_lcounter_signal <= '1';
+				else
+					case s_clk_divider is
+
+						when 7457 =>
+							s_envelope_signal <= '1';
+							s_lcounter_signal <= '0';
+							
+						when 14913 =>
+							s_envelope_signal <= '1';
+							s_lcounter_signal <= '1';
+							
+						when 22371 =>
+							s_envelope_signal <= '1';
+							s_lcounter_signal <= '0';
+							
+						when 29829 =>
+							s_envelope_signal <= not s_mode;
+							s_lcounter_signal <= not s_mode;
+							
+						when 37281 =>
+							s_envelope_signal <= '1';
+							s_lcounter_signal <= '1';
+
+						when others =>
+							s_envelope_signal <= '0';
+							s_lcounter_signal <= '0';
+					
+					end case;
+				end if;
+			end if;
+		end if;
+	end process;
+	
+	s_last_clk <= '1' when ((s_mode = '0') and (s_clk_divider = 29829)) or ((s_mode = '1') and (s_clk_divider = 37281)) else '0';
+	/*
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_reset_n = '0' then
 				s_apu_signal <= '1';
 			elsif i_clk_enable = '1' then
 				s_apu_signal <= not s_apu_signal;
@@ -1774,42 +1838,48 @@ begin
 		end if;
 	end process;
 	
-	process (s_clk_divider, s_mode)
+	process (all)
 	begin
-		case s_clk_divider is
+		if s_clock_trigger = '1' then
+			s_envelope_signal <= '1';
+			s_lcounter_signal <= '1';
+		else
+			case s_clk_divider is
 
-			when 7457 =>
-				s_envelope_signal <= '1';
-				s_lcounter_signal <= '0';
-				s_last_clk <= '0';
-				
-			when 14913 =>
-				s_envelope_signal <= '1';
-				s_lcounter_signal <= '1';
-				s_last_clk <= '0';
-				
-			when 22371 =>
-				s_envelope_signal <= '1';
-				s_lcounter_signal <= '0';
-				s_last_clk <= '0';
-				
-			when 29829 =>
-				s_envelope_signal <= not s_mode;
-				s_lcounter_signal <= not s_mode;
-				s_last_clk <= not s_mode;
-				
-			when 37281 =>
-				s_envelope_signal <= s_mode;
-				s_lcounter_signal <= s_mode;
-				s_last_clk <= s_mode;
+				when 7457 =>
+					s_envelope_signal <= '1';
+					s_lcounter_signal <= '0';
+					s_last_clk <= '0';
+					
+				when 14913 =>
+					s_envelope_signal <= '1';
+					s_lcounter_signal <= '1';
+					s_last_clk <= '0';
+					
+				when 22371 =>
+					s_envelope_signal <= '1';
+					s_lcounter_signal <= '0';
+					s_last_clk <= '0';
+					
+				when 29829 =>
+					s_envelope_signal <= not s_mode;
+					s_lcounter_signal <= not s_mode;
+					s_last_clk <= not s_mode;
+					
+				when 37281 =>
+					s_envelope_signal <= s_mode;
+					s_lcounter_signal <= s_mode;
+					s_last_clk <= s_mode;
 
-			when others =>
-				s_envelope_signal <= '0';
-				s_lcounter_signal <= '0';
-				s_last_clk <= '0';
-		
-		end case;
+				when others =>
+					s_envelope_signal <= '0';
+					s_lcounter_signal <= '0';
+					s_last_clk <= '0';
+			
+			end case;
+		end if;
 	end process;
+	*/
 	
 	s_apu_clk <= s_apu_signal and i_clk_enable;
 	s_envelope_clk <= s_envelope_signal and i_clk_enable;
@@ -1825,12 +1895,14 @@ begin
 				s_square2_enable <= '0';
 				s_triangle_enable <= '0';
 				s_noise_enable <= '0';
+				s_dmc_enable <= '0';
 			elsif i_clk_enable = '1' then
 				if s_write_r15 then
 					s_square1_enable <= i_data(0);
 					s_square2_enable <= i_data(1);
 					s_triangle_enable <= i_data(2);
 					s_noise_enable <= i_data(3);
+					s_dmc_enable <= i_data(4);
 				end if;
 			end if;
 		end if;
@@ -1851,6 +1923,19 @@ begin
 		end if;
 	end process;
 	
+	-- OMA-DMA
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_reset_n = '0' then
+				s_oma_addr <= x"00";
+			elsif (i_clk_enable = '1') and (s_write_r14 = '1') then
+				s_oma_addr <= i_data;
+			end if;
+		end if;
+	end process;
+	
 	-- Read Port
 
 	process (i_clk)
@@ -1862,7 +1947,7 @@ begin
 				case i_addr is
 				
 					when REG_4015 =>
-						s_q <= s_dmc_int_pending & s_frame_int_pending &"00" & s_noise_active & s_triangle_active & s_square2_active & s_square1_active;
+						s_q <= s_dmc_int_pending & s_frame_int_active & '0' & s_dmc_active & s_noise_active & s_triangle_active & s_square2_active & s_square1_active;
 						
 					when REG_4016 =>
 						s_q <= "0000000" & not i_ctrl_a_data;
@@ -1879,6 +1964,32 @@ begin
 	end process;
 	
 	o_q <= s_q;
+	
+	-- Write Port
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_reset_n = '0' then
+				s_data <= x"00";
+				s_r17_written <= false;
+			elsif i_clk_enable = '1' then
+				s_r17_written <= s_write_r17;
+			
+				if s_write_apu then
+					s_data <= i_data;
+				end if;
+			end if;
+		end if;
+	end process;
+	
+	s_write_apu <= (i_cs_n = '0') and (i_write_enable = '1');
+	s_write_r14 <= '1' when s_write_apu and (i_addr = REG_4014) else '0';
+	s_write_r15 <= s_write_apu and (i_addr = REG_4015);
+	s_write_r16 <= s_write_apu and (i_addr = REG_4016);
+	s_write_r17 <= s_write_apu and (i_addr = REG_4017);
+	s_write_r17_sync <= false when s_apu_signal = '0' else s_r17_written or s_write_r17;
+	s_data_sync <= i_data when s_write_apu else s_data;
 	
 	-- Read Controller A
 	
@@ -1935,11 +2046,6 @@ begin
 	
 	-- Misc
 
-	s_write_apu <= (i_cs_n = '0') and (i_write_enable = '1');
-	s_write_r14 <= '1' when s_write_apu and (i_addr = REG_4014) else '0';
-	s_write_r15 <= s_write_apu and (i_addr = REG_4015);
-	s_write_r16 <= s_write_apu and (i_addr = REG_4016);
-	s_write_r17 <= s_write_apu and (i_addr = REG_4017);
 	s_read_apu <= (i_cs_n = '0') and (i_write_enable = '0');
 	s_read_r15 <= s_read_apu and (i_addr = REG_4015);
 	s_read_r16 <= s_read_apu and (i_addr = REG_4016);

@@ -4,7 +4,7 @@ JedecChain;
 	DefaultMfr(6E);
 
 	P ActionCode(Cfg)
-		Device PartName(5CGXFC5C6F27) Path("C:/altera/projects/nes/output_files/") File("nes.sof") MfrSpec(OpMask(1));
+		Device PartName(5CGXFC5C6F27) Path("C:/altera/projects/fpgaNES/output_files/") File("nes.sof") MfrSpec(OpMask(1));
 
 ChainEnd;
 

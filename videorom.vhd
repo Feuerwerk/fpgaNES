@@ -64,7 +64,7 @@ BEGIN
 	GENERIC MAP (
 		clock_enable_input_a => "NORMAL",
 		clock_enable_output_a => "BYPASS",
-		init_file => "./test_modules/test_ntsc_Character.hex",
+		init_file => "test_videorom.hex",
 		intended_device_family => "Cyclone V",
 		lpm_hint => "ENABLE_RUNTIME_MOD=YES,INSTANCE_NAME=VROM",
 		lpm_type => "altsyncram",
@@ -113,7 +113,7 @@ END SYN;
 -- Retrieval info: PRIVATE: JTAG_ENABLED NUMERIC "1"
 -- Retrieval info: PRIVATE: JTAG_ID STRING "VROM"
 -- Retrieval info: PRIVATE: MAXIMUM_DEPTH NUMERIC "0"
--- Retrieval info: PRIVATE: MIFfilename STRING "./test_modules/test_ntsc_Character.hex"
+-- Retrieval info: PRIVATE: MIFfilename STRING "test_videorom.hex"
 -- Retrieval info: PRIVATE: NUMWORDS_A NUMERIC "8192"
 -- Retrieval info: PRIVATE: RAM_BLOCK_TYPE NUMERIC "0"
 -- Retrieval info: PRIVATE: READ_DURING_WRITE_MODE_PORT_A NUMERIC "3"
@@ -130,7 +130,7 @@ END SYN;
 -- Retrieval info: LIBRARY: altera_mf altera_mf.altera_mf_components.all
 -- Retrieval info: CONSTANT: CLOCK_ENABLE_INPUT_A STRING "NORMAL"
 -- Retrieval info: CONSTANT: CLOCK_ENABLE_OUTPUT_A STRING "BYPASS"
--- Retrieval info: CONSTANT: INIT_FILE STRING "./test_modules/test_ntsc_Character.hex"
+-- Retrieval info: CONSTANT: INIT_FILE STRING "test_videorom.hex"
 -- Retrieval info: CONSTANT: INTENDED_DEVICE_FAMILY STRING "Cyclone V"
 -- Retrieval info: CONSTANT: LPM_HINT STRING "ENABLE_RUNTIME_MOD=YES,INSTANCE_NAME=VROM"
 -- Retrieval info: CONSTANT: LPM_TYPE STRING "altsyncram"
