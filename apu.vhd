@@ -904,7 +904,6 @@ architecture behavioral of dmc_channel is
 	signal s_timer_done : boolean;
 	signal s_silent : boolean := true;
 	signal s_bits_remaining : unsigned(2 downto 0) := "000";
-	signal s_sample_buffer : std_logic_vector(7 downto 0) := x"00";
 	signal s_shift_buffer : std_logic_vector(7 downto 0) := x"00";
 	signal s_sample_buffer_empty : boolean := true;
 	signal s_bits_empty : boolean;
@@ -1028,7 +1027,7 @@ begin
 				s_shift_buffer <= '0' & s_shift_buffer(7 downto 1);
 						
 				if s_bits_empty then
-					s_shift_buffer <= s_sample_buffer;
+					s_shift_buffer <= i_dma_data;
 					s_silent <= s_sample_buffer_empty;
 				end if;
 			end if;
@@ -1043,13 +1042,11 @@ begin
 			if i_reset_n = '0' then
 				s_sample_buffer_empty <= true;
 				s_dma_busy_d <= '0';
-				s_sample_buffer <= x"00";
 			elsif i_clk_enable = '1' then
 				s_dma_busy_d <= i_dma_busy;
 				
 				if s_dma_done then
 					s_sample_buffer_empty <= false;
-					s_sample_buffer <= i_dma_data;
 				elsif s_timer_done and s_bits_empty then
 					s_sample_buffer_empty <= true;
 				end if;
@@ -1328,7 +1325,7 @@ begin
 					else '0';
 	o_data <= i_data;
 	o_write_enable <= s_write_enable;
-	o_single_busy <= '0' when s_sin_mode = idle else '1';
+	o_single_busy <= '1' when s_fetch_single or (s_sin_mode /= idle) else '0';
 	o_single_q <= s_single_q;
 
 end behavioral;
@@ -1534,7 +1531,6 @@ architecture behavioral of apu is
 	signal s_write_apu : boolean;
 	signal s_square1_q : std_logic_vector(3 downto 0) := "0000";
 	signal s_square2_q : std_logic_vector(3 downto 0) := "0000";
-	signal s_last_clk : std_logic;
 	signal s_square_sum : std_logic_vector(4 downto 0);
 	signal s_square_index : integer range 0 to 30;
 	signal s_tnd_sum : std_logic_vector(7 downto 0);
@@ -1732,7 +1728,7 @@ begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_frame_int_trigger <= false;
-			elsif i_clk_enable = '1' then
+			elsif s_apu_clk = '1' then
 				if (s_clk_divider = 29829) and (s_int_disable = '0') and (s_mode = '0') then
 					s_frame_int_trigger <= true;
 				else
@@ -1770,7 +1766,7 @@ begin
 			if i_reset_n = '0' then
 				s_clk_divider <= 0;
 			elsif i_clk_enable = '1' then
-				if s_write_r17_sync or (s_last_clk = '1') then
+				if s_write_r17_sync or ((s_mode = '0') and (s_clk_divider = 29829)) or ((s_mode = '1') and (s_clk_divider = 37281)) then
 					s_clk_divider <= 0;
 				else
 					s_clk_divider <= s_clk_divider + 1;
@@ -1824,62 +1820,6 @@ begin
 			end if;
 		end if;
 	end process;
-	
-	s_last_clk <= '1' when ((s_mode = '0') and (s_clk_divider = 29829)) or ((s_mode = '1') and (s_clk_divider = 37281)) else '0';
-	/*
-	process (i_clk)
-	begin
-		if rising_edge(i_clk) then
-			if i_reset_n = '0' then
-				s_apu_signal <= '1';
-			elsif i_clk_enable = '1' then
-				s_apu_signal <= not s_apu_signal;
-			end if;
-		end if;
-	end process;
-	
-	process (all)
-	begin
-		if s_clock_trigger = '1' then
-			s_envelope_signal <= '1';
-			s_lcounter_signal <= '1';
-		else
-			case s_clk_divider is
-
-				when 7457 =>
-					s_envelope_signal <= '1';
-					s_lcounter_signal <= '0';
-					s_last_clk <= '0';
-					
-				when 14913 =>
-					s_envelope_signal <= '1';
-					s_lcounter_signal <= '1';
-					s_last_clk <= '0';
-					
-				when 22371 =>
-					s_envelope_signal <= '1';
-					s_lcounter_signal <= '0';
-					s_last_clk <= '0';
-					
-				when 29829 =>
-					s_envelope_signal <= not s_mode;
-					s_lcounter_signal <= not s_mode;
-					s_last_clk <= not s_mode;
-					
-				when 37281 =>
-					s_envelope_signal <= s_mode;
-					s_lcounter_signal <= s_mode;
-					s_last_clk <= s_mode;
-
-				when others =>
-					s_envelope_signal <= '0';
-					s_lcounter_signal <= '0';
-					s_last_clk <= '0';
-			
-			end case;
-		end if;
-	end process;
-	*/
 	
 	s_apu_clk <= s_apu_signal and i_clk_enable;
 	s_envelope_clk <= s_envelope_signal and i_clk_enable;

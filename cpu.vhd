@@ -882,9 +882,12 @@ architecture behavioral of cpu is
 	signal s_internal_clk : std_logic;
 	signal s_sync_clk : std_logic := '0';
 	signal s_clk_enable : std_logic;
+	signal s_ready_d : std_logic := '1';
 	signal s_sync_edge : std_logic;
 	signal s_clk_divider : integer range 0 to DIVIDER - 1 := 0;
 	signal s_opcode_change : opcode_t := def;
+	signal s_mem_q : std_logic_vector(7 downto 0);
+	signal s_mem_q_d : std_logic_vector(7 downto 0) := x"00";
 	alias s_alu_res : std_logic_vector(7 downto 0) is s_alu_q(7 downto 0);
 	alias s_alu_c : std_logic is s_alu_q(8);
 	
@@ -919,7 +922,7 @@ begin
 		o_alu_b_op => s_alu_b_op
 	);
 	
-	-- Clock Divider
+	-- Clock Divider & Internal Clock
 	
 	process (i_clk)
 	begin
@@ -943,6 +946,38 @@ begin
 				s_sync_clk <= '0';
 			elsif s_clk_divider = 2 then
 				s_sync_clk <= '1';
+			end if;
+		end if;
+	end process;
+	
+	s_internal_clk <= '1' when s_clk_divider = DIVIDER - 1 else '0';
+	s_clk_enable <= s_internal_clk and i_ready;
+	
+	-- Memory-Access
+	-- Last read memory value is stored if ready-signal drop to 0 and is available until ready returns to 1
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_reset_n = '0' then
+				s_mem_q_d <= x"00";
+			elsif (s_internal_clk = '1') and (s_ready_d = '1') then
+				s_mem_q_d <= i_mem_q;
+			end if;
+		end if;
+	end process;
+	
+	s_mem_q <= i_mem_q when s_ready_d = '1' else s_mem_q_d;
+	
+	-- Ready-Signal
+
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_reset_n = '0' then
+				s_ready_d <= '1';
+			elsif s_internal_clk = '1' then
+				s_ready_d <= i_ready;
 			end if;
 		end if;
 	end process;
@@ -1055,7 +1090,7 @@ begin
 	-- Program-Counter
 
 	with s_pc_op select s_pc <=
-		i_mem_q & s_alu_res when daq,
+		s_mem_q & s_alu_res when daq,
 		s_pc_reg when others;
 		
 	s_pc_inc <= s_pc + x"0001";
@@ -1120,7 +1155,7 @@ begin
 					case s_in_op is
 					
 						when ena =>
-							s_value <= i_mem_q;
+							s_value <= s_mem_q;
 							
 						when alq =>
 							s_value <= s_alu_res;
@@ -1142,7 +1177,7 @@ begin
 	-- Ouput
 
 	with s_out_op select s_new_value <=
-		i_mem_q when din,
+		s_mem_q when din,
 		s_alu_res when ena,
 		s_pc(7 downto 0) when pcl,
 		s_pc(15 downto 8) when pch,
@@ -1201,7 +1236,7 @@ begin
 					case s_flags_op is
 					
 						when din =>
-							s_flags.i <= i_mem_q(I_FLAG);
+							s_flags.i <= s_mem_q(I_FLAG);
 					
 						when sei =>
 							s_flags.i <= '1';
@@ -1229,7 +1264,7 @@ begin
 					case s_flags_op is
 					
 						when din =>
-							s_flags.z <= i_mem_q(Z_FLAG);
+							s_flags.z <= s_mem_q(Z_FLAG);
 					
 						when nz | nzv | nzc | nvzc =>
 							s_flags.z <= ze(s_alu_res);
@@ -1254,13 +1289,13 @@ begin
 					case s_flags_op is
 					
 						when din =>
-							s_flags.n <= i_mem_q(N_FLAG);
+							s_flags.n <= s_mem_q(N_FLAG);
 					
 						when nz | nzc | nvzc =>
 							s_flags.n <= s_alu_res(7);
 							
 						when nzv =>
-							s_flags.n <= i_mem_q(7);
+							s_flags.n <= s_mem_q(7);
 							
 						when others =>
 					
@@ -1282,13 +1317,13 @@ begin
 					case s_flags_op is
 					
 						when din =>
-							s_flags.v <= i_mem_q(V_FLAG);
+							s_flags.v <= s_mem_q(V_FLAG);
 					
 						when nvzc =>
 							s_flags.v <= s_overflow;
 							
 						when nzv =>
-							s_flags.v <= i_mem_q(6);
+							s_flags.v <= s_mem_q(6);
 							
 						when clv =>
 							s_flags.v <= '0';
@@ -1313,7 +1348,7 @@ begin
 					case s_flags_op is
 					
 						when din =>
-							s_flags.c <= i_mem_q(C_FLAG);
+							s_flags.c <= s_mem_q(C_FLAG);
 					
 						when stc =>
 							s_flags.c <= '1';
@@ -1344,7 +1379,7 @@ begin
 					case s_flags_op is
 					
 						when din =>
-							s_flags.d <= i_mem_q(D_FLAG);
+							s_flags.d <= s_mem_q(D_FLAG);
 					
 						when sed =>
 							s_flags.d <= '1';
@@ -1364,7 +1399,7 @@ begin
 
 	with s_alu_a_op select s_alu_a <= 
 		s_value when val,
-		i_mem_q when din,
+		s_mem_q when din,
 		s_alu_q_d(7 downto 0) when alq,
 		s_areg when arg,
 		s_xreg when xrg,
@@ -1384,7 +1419,7 @@ begin
 
 	with s_alu_b_op select s_alu_b <= 
 		s_value when val,
-		i_mem_q when din,
+		s_mem_q when din,
 		s_alu_q_d(7 downto 0) when alq,
 		s_areg when arg,
 		s_xreg when xrg,
@@ -1409,7 +1444,7 @@ begin
 		x"01" & s_alu_q_d(7 downto 0) when oad,
 		x"00" & s_value when zvl,
 		s_value & s_alu_res when vaq,
-		i_mem_q & s_alu_res when daq,
+		s_mem_q & s_alu_res when daq,
 		s_alu_res & s_alu_q_d(7 downto 0) when aqd,
 		s_alu_q_d(7 downto 0) & s_value when adv,
 		x"----" when others;
@@ -1425,7 +1460,7 @@ begin
 		(s_extended_add = '0') when bvc,
 		(s_extended_add = '0') when bvs,
 		false when others;
-	
+		
 	-- current opcode which has to be executed
 	s_opcode <= s_next_opcode when s_fetch_d
 	            else s_current_opcode;
@@ -1434,7 +1469,7 @@ begin
 		RST_OPCODE when rst,
 	   NMI_OPCODE when nmi,
 	   INT_OPCODE when int,
-	   i_mem_q when others;
+	   s_mem_q when others;
 
 	s_mem_data <= s_new_value;
 	s_mem_write_enable <= s_write_enable;
@@ -1469,9 +1504,7 @@ begin
 	o_mem_data <= s_mem_data;
 	o_mem_write_enable <= s_mem_write_enable;
 
-	s_internal_clk <= '1' when s_clk_divider = DIVIDER - 1 else '0';
 	s_sync_edge <= i_clk when s_clk_divider = 10 else '1';
-	s_clk_enable <= s_internal_clk and i_ready;
 	o_phi0 <= s_internal_clk;
 	o_phi2 <= s_sync_clk and s_sync_edge;
 
