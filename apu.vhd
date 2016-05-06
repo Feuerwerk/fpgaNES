@@ -111,7 +111,7 @@ begin
 			if i_reset_n = '0' then
 				s_length_counter <= x"00";
 			elsif i_clk_enable = '1' then
-				if (i_cs_n = '0') and (i_write_enable = '1') and (i_addr = "11") and (i_channel_enable = '1') then
+				if (i_cs_n = '0') and (i_write_enable = '1') and (i_addr = "11") and (i_channel_enable = '1') and ((i_lcounter_clk = '0') or (s_length_counter = x"00")) then
 					length_index := to_integer(unsigned(i_data(7 downto 3)));
 					s_length_counter <= LENGTH_COUNTER_TABLE(length_index);
 				elsif (i_channel_reload = '1') and (i_channel_enable = '0') then
@@ -886,7 +886,8 @@ end dmc_channel;
 
 architecture behavioral of dmc_channel is
 	type period_t is array (0 to 15) of std_logic_vector(8 downto 0);
-	constant PERIOD_TABLE : period_t := ( 9x"1AC", 9x"17C", 9x"154", 9x"140", 9x"11E", 9x"0FE", 9x"0E2", 9x"0D6", 9x"0BE", 9x"0A0", 9x"08E", 9x"080", 9x"06A", 9x"054", 9x"048", 9x"036" );
+	constant PERIOD_TABLE : period_t := ( 9x"1AB", 9x"17B", 9x"153", 9x"139", 9x"11D", 9x"0FD", 9x"0E1", 9x"0D5",
+	                                      9x"0BD", 9x"09F", 9x"08D", 9x"07F", 9x"069", 9x"053", 9x"047", 9x"035" );
 	
 	signal s_int_enable : std_logic := '0';
 	signal s_loop : std_logic := '0';
@@ -1015,6 +1016,8 @@ begin
 		end if;
 	end process;
 	
+	s_timer_done <= s_timer_counter = "000";
+	
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
@@ -1033,6 +1036,8 @@ begin
 			end if;
 		end if;
 	end process;
+	
+	s_bits_empty <= s_bits_remaining = "000";
 	
 	-- DMA Response & Sample Buffer
 	
@@ -1117,10 +1122,8 @@ begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_int_enable <= '0';
-			elsif i_clk_enable = '1' then
-				if s_write_r0 then
-					s_int_enable <= i_data(7);
-				end if;
+			elsif (i_clk_enable = '1') and s_write_r0 then
+				s_int_enable <= i_data(7);
 			end if;
 		end if;
 	end process;
@@ -1132,7 +1135,9 @@ begin
 			if i_reset_n = '0' then
 				s_int_pending <= '0';
 			elsif i_clk_enable = '1' then
-				if s_int_trigger and (s_int_enable = '1') then
+				if s_write_r0 and (i_data(7) = '0') then
+					s_int_pending <= '0';
+				elsif s_int_trigger and (s_int_enable = '1') then
 					s_int_pending <= '1';
 				elsif i_reload = '1' then
 					s_int_pending <= '0';
@@ -1150,13 +1155,11 @@ begin
 	s_write_r1 <= s_write_ch and (i_addr = "01");
 	s_write_r2 <= s_write_ch and (i_addr = "10");
 	s_write_r3 <= s_write_ch and (i_addr = "11");
-	s_timer_done <= s_timer_counter = "000";
 	s_next_output <= ('0' & s_output) + x"02" when s_shift_buffer(0) = '1' else ('0' & s_output - x"02");
-	s_bits_empty <= s_bits_remaining = "000";
 	s_dma_free <= (s_dma_request = '0') and (i_dma_busy = '0');
 	s_dma_done <= (s_dma_busy_d = '1') and (i_dma_busy = '0');
 	
-	o_active <= '0';
+	o_active <= '0' when s_length = 12x"000" else '1';
 	o_q <= 7x"00" when s_silent else s_output;
 
 end behavioral;
@@ -1510,8 +1513,9 @@ architecture behavioral of apu is
 	constant REG_4015 : std_logic_vector(4 downto 0) := "10101";
 	constant REG_4016 : std_logic_vector(4 downto 0) := "10110";
 	constant REG_4017 : std_logic_vector(4 downto 0) := "10111";
+	constant REBOOT_CLK : natural := 12; -- @todo correct reset behavior, not working, value should be between 12 and 13 for (blargg 09.reset_timing)
 														
-	signal s_clk_divider : natural range 0 to 37281 := 0;
+	signal s_clk_divider : natural range 0 to 37281 := REBOOT_CLK;
 	signal s_apu_clk : std_logic;
 	signal s_envelope_clk : std_logic;
 	signal s_lcounter_clk : std_logic;
@@ -1561,6 +1565,7 @@ architecture behavioral of apu is
 	signal s_dmc_addr : std_logic_vector(15 downto 0);
 	signal s_dmc_int_pending : std_logic;
 	signal s_clock_trigger : std_logic := '0';
+	signal s_frame_irq_n : std_logic := '1';
 	signal s_frame_int_trigger : boolean;
 	signal s_frame_int_active : std_logic;
 	signal s_data : std_logic_vector(7 downto 0) := x"00";
@@ -1727,6 +1732,17 @@ begin
 	begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
+				s_frame_irq_n <= '1';
+			elsif i_clk_enable = '1' then
+				s_frame_irq_n <= not s_frame_int_pending;
+			end if;
+		end if;
+	end process;
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_reset_n = '0' then
 				s_frame_int_trigger <= false;
 			elsif s_apu_clk = '1' then
 				if (s_clk_divider = 29829) and (s_int_disable = '0') and (s_mode = '0') then
@@ -1738,7 +1754,7 @@ begin
 		end if;
 	end process;
 	
-	o_int_n <= not (s_frame_int_pending or s_dmc_int_pending);
+	o_int_n <= s_frame_irq_n and not s_dmc_int_pending;
 	s_frame_int_active <= '1' when s_frame_int_trigger else s_frame_int_pending;
 	
 	-- Frame Sequencer
@@ -1764,7 +1780,7 @@ begin
 	begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
-				s_clk_divider <= 0;
+				s_clk_divider <= REBOOT_CLK;
 			elsif i_clk_enable = '1' then
 				if s_write_r17_sync or ((s_mode = '0') and (s_clk_divider = 29829)) or ((s_mode = '1') and (s_clk_divider = 37281)) then
 					s_clk_divider <= 0;
