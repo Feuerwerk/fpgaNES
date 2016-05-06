@@ -886,7 +886,7 @@ end dmc_channel;
 
 architecture behavioral of dmc_channel is
 	type period_t is array (0 to 15) of std_logic_vector(8 downto 0);
-	constant PERIOD_TABLE : period_t := ( 9x"1AB", 9x"17B", 9x"153", 9x"139", 9x"11D", 9x"0FD", 9x"0E1", 9x"0D5",
+	constant PERIOD_TABLE : period_t := ( 9x"1AB", 9x"17B", 9x"153", 9x"13F", 9x"11D", 9x"0FD", 9x"0E1", 9x"0D5",
 	                                      9x"0BD", 9x"09F", 9x"08D", 9x"07F", 9x"069", 9x"053", 9x"047", 9x"035" );
 	
 	signal s_int_enable : std_logic := '0';
