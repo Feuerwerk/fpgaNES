@@ -447,7 +447,7 @@ begin
 	s_write_r3 <= s_write_ch and (i_addr = "11");
 	s_timer_done <= s_freq_counter = 11x"0000";
 	s_target_period <= ('0' & s_current_period) + ('0' & s_shift_res) when s_sweep_negate = '0'
-	                else ('0' & s_current_period) + ('1' & not(s_shift_res)) + (10x"0000" & INCREMENT);
+	                   else ('0' & s_current_period) + ('1' & not(s_shift_res)) + (10x"0000" & INCREMENT);
 	s_target_in_range <= (s_current_period(10 downto 3) /= "00000000") and ((s_target_period(11) = '0') or (s_sweep_negate = '1'));
 	s_duty_index <= to_integer(unsigned(s_duty & s_duty_counter));
 	
@@ -1160,7 +1160,7 @@ begin
 	s_dma_done <= (s_dma_busy_d = '1') and (i_dma_busy = '0');
 	
 	o_active <= '0' when s_length = 12x"000" else '1';
-	o_q <= 7x"00" when s_silent else s_output;
+	o_q <= s_output;
 
 end behavioral;
 
