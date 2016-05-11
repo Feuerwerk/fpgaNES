@@ -336,7 +336,7 @@ set_global_assignment -name VHDL_FILE i2s.vhd
 set_global_assignment -name VHDL_FILE i2c.vhd
 set_global_assignment -name VHDL_FILE i2c_master.vhd
 set_global_assignment -name VHDL_FILE hex_digit.vhd
-set_global_assignment -name VHDL_FILE fir.vhd
+set_global_assignment -name VHDL_FILE biquad.vhd
 set_global_assignment -name QIP_FILE progmem.qip
 set_global_assignment -name QIP_FILE datamem.qip
 set_global_assignment -name QIP_FILE frmmem.qip

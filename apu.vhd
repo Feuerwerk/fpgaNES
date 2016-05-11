@@ -1481,6 +1481,38 @@ architecture behavioral of apu is
 	type tnd_table_t is array (0 to 202) of std_logic_vector(15 downto 0);
 	
 	-- this values were calculated by the equations in http://wiki.nesdev.com/w/index.php/APU_Mixer
+	
+	/*
+	Base 0xFFFF
+	
+	constant SQUARE_LOOKUP : square_table_t := (	x"0000", x"02f9", x"05df", x"08b4", x"0b78", x"0e2c", x"10cf", x"1364", x"15e9",
+	                                             x"1860", x"1aca", x"1d26", x"1f75", x"21b8", x"23ee", x"2619", x"2838", x"2a4c",
+																x"2c56", x"2e55", x"304a", x"3235", x"3416", x"35ef", x"37be", x"3985", x"3b43",
+																x"3cf9", x"3ea7", x"404d", x"41ec" );
+																
+	constant TND_LOOKUP : tnd_table_t := ( x"0000", x"01b7", x"036b", x"051b", x"06c7", x"0870", x"0a16", x"0bb8", x"0d57", x"0ef2",
+	                                       x"108b", x"1220", x"13b2", x"1541", x"16cc", x"1855", x"19db", x"1b5d", x"1cdd", x"1e5a",
+														x"1fd4", x"214b", x"22bf", x"2430", x"259f", x"270b", x"2874", x"29db", x"2b3e", x"2ca0",
+														x"2dfe", x"2f5b", x"30b4", x"320b", x"3360", x"34b2", x"3602", x"374f", x"389a", x"39e3",
+														x"3b29", x"3c6d", x"3daf", x"3eee", x"402c", x"4167", x"42a0", x"43d6", x"450b", x"463d",
+														x"476e", x"489c", x"49c8", x"4af3", x"4c1b", x"4d41", x"4e66", x"4f88", x"50a8", x"51c7",
+														x"52e4", x"53fe", x"5517", x"562e", x"5744", x"5857", x"5969", x"5a79", x"5b87", x"5c93",
+														x"5d9e", x"5ea7", x"5fae", x"60b4", x"61b8", x"62ba", x"63bb", x"64ba", x"65b8", x"66b4",
+														x"67ae", x"68a7", x"699f", x"6a95", x"6b89", x"6c7c", x"6d6d", x"6e5d", x"6f4c", x"7039",
+														x"7124", x"720e", x"72f7", x"73df", x"74c5", x"75aa", x"768d", x"776f", x"7850", x"792f",
+														x"7a0d", x"7aea", x"7bc5", x"7ca0", x"7d79", x"7e50", x"7f27", x"7ffc", x"80d0", x"81a3",
+														x"8275", x"8345", x"8415", x"84e3", x"85b0", x"867c", x"8746", x"8810", x"88d8", x"89a0",
+														x"8a66", x"8b2b", x"8bef", x"8cb2", x"8d74", x"8e35", x"8ef5", x"8fb4", x"9072", x"912e",
+														x"91ea", x"92a5", x"935f", x"9418", x"94cf", x"9586", x"963c", x"96f1", x"97a5", x"9858",
+														x"990a", x"99bb", x"9a6b", x"9b1b", x"9bc9", x"9c77", x"9d23", x"9dcf", x"9e7a", x"9f24",
+														x"9fcd", x"a075", x"a11d", x"a1c3", x"a269", x"a30e", x"a3b2", x"a455", x"a4f8", x"a59a",
+														x"a63a", x"a6da", x"a77a", x"a818", x"a8b6", x"a953", x"a9ef", x"aa8a", x"ab25", x"abbf",
+														x"ac58", x"acf0", x"ad88", x"ae1f", x"aeb5", x"af4b", x"afe0", x"b074", x"b107", x"b19a",
+														x"b22c", x"b2bd", x"b34e", x"b3de", x"b46d", x"b4fb", x"b589", x"b617", x"b6a3", x"b72f",
+														x"b7bb", x"b845", x"b8cf", x"b959", x"b9e1", x"ba6a", x"baf1", x"bb78", x"bbfe", x"bc84",
+														x"bd09", x"bd8e", x"be12" );
+														
+	*/
 
 	constant SQUARE_LOOKUP : square_table_t := (	x"0000", x"011d", x"0234", x"0344", x"044d", x"0550", x"064e", x"0745", x"0837",
 	                                             x"0924", x"0a0c", x"0aee", x"0bcc", x"0ca5", x"0d79", x"0e49", x"0f15", x"0fdd",
