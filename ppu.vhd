@@ -96,7 +96,7 @@ begin
 end architecture;
 
 /*****************************************************************/
-
+/*
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
@@ -189,6 +189,7 @@ begin
 		x"--" when others;
 	
 end architecture;
+*/
 
 /*****************************************************************/
 
@@ -199,10 +200,6 @@ use ieee.numeric_std.all;
 use work.common.all;
 
 entity ppu is
-	generic
-	(
-		DIVIDER : integer := 4
-	);
 	port
 	(
 		i_clk : in std_logic;
@@ -211,11 +208,17 @@ entity ppu is
 		i_data : in std_logic_vector(7 downto 0) := x"00";
 		i_write_enable : in std_logic := '0';
 		i_cs_n : in std_logic := '0';
+		i_video_mode : in video_mode_t := ntsc;
+		i_chr_data : in std_logic_vector(7 downto 0) := x"00";
 		o_q : out std_logic_vector(7 downto 0);
 		o_int_n : out std_logic;
 		o_vga_addr : out std_logic_vector(15 downto 0);
 		o_vga_data : out std_logic_vector(5 downto 0);
 		o_vga_write_enable : out std_logic;
+		o_chr_addr : out std_logic_vector(13 downto 0);
+		o_chr_read_enable : out std_logic;
+		o_chr_write_enable : out std_logic;
+		o_chr_q : out std_logic_vector(7 downto 0);
 		o_phi0 : out std_logic
 	);
 end ppu;
@@ -237,6 +240,7 @@ architecture behavioral of ppu is
 			o_q : out std_logic_vector(7 downto 0)
 		);
 	end component;
+	/*
 	component ppumem is
 		port
 		(
@@ -248,6 +252,7 @@ architecture behavioral of ppu is
 			o_q : out std_logic_vector(7 downto 0)
 		);
 	end component;
+	*/
 	component spritemem is
 		port
 		(
@@ -321,16 +326,18 @@ architecture behavioral of ppu is
 	signal s_oam_q : std_logic_vector(7 downto 0);
 	signal s_spr_addr : std_logic_vector(15 downto 0) := (others => '0');
 	signal s_bkg_addr : std_logic_vector(15 downto 0) := (others => '0');
+	signal s_spr_read_enable : std_logic := '0';
+	signal s_bkg_read_enable : std_logic := '0';
 	signal s_video_addr : std_logic_vector(15 downto 0) := (others => '0');
-	signal s_video_data : std_logic_vector(7 downto 0);
+	signal s_video_read_enable : std_logic;
 	signal s_video_write_enable : std_logic;
 	signal s_xpos : std_logic_vector(7 downto 0);
 	signal s_next_ypos : std_logic_vector(7 downto 0);
 	signal s_cycle : integer range 0 to 340 := 0;
 	signal s_line : integer range 0 to 261 := 261;
 	signal s_tile_index : std_logic_vector(7 downto 0);
-	signal s_background_half : std_logic;
-	signal s_sprite_half : std_logic;
+	signal s_background_half : std_logic := '0';
+	signal s_sprite_half : std_logic := '0';
 	signal s_nametable : std_logic_vector(1 downto 0);
 	signal s_shifter_enable : std_logic := '0';
 	signal s_shifter_load : std_logic := '0';
@@ -405,7 +412,8 @@ architecture behavioral of ppu is
 	signal s_palette_mem : byte_array_t := ( x"09", x"01", x"00", x"01", x"00", x"02", x"02", x"0D", x"08", x"10", x"08", x"24", x"00", x"00", x"04", x"2C", x"09", x"01", x"34", x"03", x"00", x"04", x"00", x"14", x"08", x"3A", x"00", x"02", x"00", x"20", x"2C", x"08" );
 	signal s_hblank_cycle : boolean;
 	signal s_first_col_n : boolean;
-	signal s_clk_divider : integer range 0 to DIVIDER - 1 := 0;
+	signal s_clk_divider : natural := 0;
+	signal s_divider : natural := 0;
 	signal s_vram_bkg_inc : boolean;
 	signal s_frame_latch : boolean := true;
 	signal s_enable_rendering : boolean;
@@ -413,6 +421,7 @@ architecture behavioral of ppu is
 	signal s_greyscale : std_logic := '0';
 
 begin
+/*
 	mem: ppumem port map
 	(
 		i_clk => i_clk,
@@ -422,6 +431,7 @@ begin
 		i_write_enable => s_video_write_enable,
 		o_q => s_video_data
 	);
+	*/
 	oamem: spritemem port map
 	(
 		clock => i_clk,
@@ -455,7 +465,7 @@ begin
 		i_clk_enable => s_clk_enable,
 		i_load => s_shifter_load,
 		i_enable => s_shifter_enable,
-		i_data => s_video_data,
+		i_data => i_chr_data,
 		o_q => s_th_q
 	);
 	bl_shifter: parallel_serial_shifter generic map (16, 8) port map
@@ -492,12 +502,25 @@ begin
 	
 	-- Clock Divider
 	
+	process (i_video_mode)
+	begin
+		case i_video_mode is
+		
+			when ntsc =>
+				s_divider <= 4;
+				
+			when pal =>
+				s_divider <= 5;
+			
+		end case;
+	end process;
+	
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_clk_divider <= 0;
-			elsif s_clk_divider = DIVIDER - 1 then
+			elsif s_clk_divider = s_divider - 1 then
 				s_clk_divider <= 0;
 			else
 				s_clk_divider <= s_clk_divider + 1;
@@ -617,7 +640,7 @@ begin
 						when ppudata_read =>
 							if s_io_cycle = 5 then
 								s_io_state <= idle;
-								s_io_mem <= s_video_data;
+								s_io_mem <= i_chr_data;
 							else
 								if s_io_cycle = 1 then
 									if s_palette_access then
@@ -908,8 +931,6 @@ begin
 		end if;
 	end process;
 	
-	s_video_write_enable <= '1' when (s_io_state = ppudata_write) and (s_io_cycle = 7) and not s_palette_access else '0';
-	
 	-- Palette
 
 	process (i_clk)
@@ -933,6 +954,7 @@ begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				s_shifter_load <= '0';
+				s_bkg_read_enable <= '0';
 			
 				if i_reset_n = '0' then
 					s_bkg_state <= idle;
@@ -945,14 +967,16 @@ begin
 					
 						when nt1 => -- Name Table
 							s_bkg_state <= nt2;
+							s_bkg_read_enable <= '1';
 							
 						when nt2 =>
-							s_tile_index <= s_video_data;
+							s_tile_index <= i_chr_data;
 							s_bkg_addr <= s_attr_addr;
 							s_bkg_state <= at1;
 							
 						when at1 => -- Attribute Table
 							s_bkg_state <= at2;
+							s_bkg_read_enable <= '1';
 							
 						when at2 =>
 							if s_cycle /= 340 then
@@ -962,16 +986,16 @@ begin
 								case s_palette_quadrant is
 								
 									when "00" =>
-										s_new_background_palette_index <= s_video_data(1 downto 0);
+										s_new_background_palette_index <= i_chr_data(1 downto 0);
 										
 									when "01" =>
-										s_new_background_palette_index <= s_video_data(3 downto 2);
+										s_new_background_palette_index <= i_chr_data(3 downto 2);
 										
 									when "10" =>
-										s_new_background_palette_index <= s_video_data(5 downto 4);
+										s_new_background_palette_index <= i_chr_data(5 downto 4);
 										
 									when "11" =>
-										s_new_background_palette_index <= s_video_data(7 downto 6);
+										s_new_background_palette_index <= i_chr_data(7 downto 6);
 										
 									when others =>
 										s_new_background_palette_index <= "00";
@@ -986,14 +1010,16 @@ begin
 							
 						when tl1 => -- Tile low
 							s_bkg_state <= tl2;
+							s_bkg_read_enable <= '1';
 							
 						when tl2 =>
 							s_bkg_state <= th1;
-							s_tl_data <= s_video_data;
+							s_tl_data <= i_chr_data;
 							s_bkg_addr <= s_tile_hi_addr;
 							
 						when th1 => -- Tile high
 							s_bkg_state <= th2;
+							s_bkg_read_enable <= '1';
 							
 						when th2 =>
 							s_shifter_load <= '1';
@@ -1017,6 +1043,8 @@ begin
 	begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
+				s_spr_read_enable <= '0';
+			
 				if i_reset_n = '0' then
 					s_spr_state <= idle;
 					s_soa_addr <= "00000";
@@ -1176,6 +1204,7 @@ begin
 						when ftl1 =>
 							s_spr_state <= ftl2;
 							s_sprites(s_spr_idx).x <= s_soa_q; -- X-Position
+							s_spr_read_enable <= '1';
 							
 						when ftl2 =>
 							s_sprites(s_spr_idx).tile_low <= s_tile_data;
@@ -1185,6 +1214,7 @@ begin
 						when fth1 =>
 							s_oam_addr <= x"00";
 							s_spr_state <= fth2;
+							s_spr_read_enable <= '1';
 							
 						when fth2 =>
 							s_sprites(s_spr_idx).tile_high <= s_tile_data;
@@ -1316,13 +1346,20 @@ begin
 	s_next_tile_addr <= s_sprite_half & s_sprite_tile & '0' & s_inner_tile_pos(2 downto 0) when s_big_sprites = '0'
 	                    else s_sprite_tile(0) & s_sprite_tile(7 downto 1) & s_inner_tile_pos(3) & '0' & s_inner_tile_pos(2 downto 0);
 							 
-	s_tile_data <= reverse_vector(s_video_data) when s_sprite_flip_horizontal = '1' else s_video_data;
+	s_tile_data <= reverse_vector(i_chr_data) when s_sprite_flip_horizontal = '1' else i_chr_data;
 	s_next_spr_idx <= s_spr_idx + 1;
 						 
 	s_video_addr <= s_spr_addr when s_visible_or_prescan_line and s_hblank_cycle and s_enable_rendering
 	                else s_bkg_addr when s_visible_or_prescan_line and not s_hblank_cycle and s_enable_rendering
 						 else '0' & s_vram_addr_v;
 						 
+	s_video_read_enable <= s_spr_read_enable when s_visible_or_prescan_line and s_hblank_cycle and s_enable_rendering
+	                       else s_bkg_read_enable when s_visible_or_prescan_line and not s_hblank_cycle and s_enable_rendering
+								  else '1' when (s_io_state = ppudata_read) and (s_io_cycle = 4)
+								  else '0';
+								  
+	s_video_write_enable <= '1' when (s_io_state = ppudata_write) and (s_io_cycle = 7) and not s_palette_access else '0';
+					 
 	s_xpos <= std_logic_vector(to_unsigned(s_cycle - 1, 8)) when s_render else x"ff";
 	s_next_ypos <= x"00" when s_line >= 239 else std_logic_vector(to_unsigned(s_line, 8)) + x"01";
 	s_out_write_enable <= '1' when s_visible_line and s_render else '0';
@@ -1356,5 +1393,10 @@ begin
 	o_vga_addr <= s_out_addr;
 	o_vga_data <= s_out_data;
 	o_vga_write_enable <= s_out_write_enable;
+	
+	o_chr_addr <= s_video_addr(13 downto 0);
+	o_chr_q <= s_io_data;
+	o_chr_read_enable <= s_video_read_enable;
+	o_chr_write_enable <= s_video_write_enable;
 
 end architecture;

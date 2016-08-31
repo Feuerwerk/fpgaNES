@@ -37,6 +37,11 @@ entity data_path is
 		i_write_enable : in std_logic;
 		i_ppu_q : in std_logic_vector(7 downto 0);
 		i_apu_q : in std_logic_vector(7 downto 0);
+		i_prg_q : in std_logic_vector(7 downto 0);
+		o_prg_addr : out std_logic_vector(14 downto 0);
+		o_prg_data : out std_logic_vector(7 downto 0);
+		o_prg_cs_n : out std_logic;
+		o_prg_write_enable : out std_logic;
 		o_ppu_addr : out std_logic_vector(2 downto 0);
 		o_ppu_data : out std_logic_vector(7 downto 0);
 		o_ppu_write_enable : out std_logic;
@@ -50,15 +55,6 @@ entity data_path is
 end data_path;
 
 architecture behavioral of data_path is
-	component progmem is
-		port
-		(
-			address : in std_logic_vector(14 downto 0);
-			clken : in std_logic := '1';
-			clock : in std_logic := '1';
-			q : out std_logic_vector(7 downto 0)
-		);
-	end component;
 	component datamem is
 		port
 		(
@@ -73,8 +69,6 @@ architecture behavioral of data_path is
 	
 	type addr_type_t is (nop, ram, rom, ppu, apu);
 	
-	signal s_prgrom_addr : std_logic_vector(14 downto 0);
-	signal s_prgrom_q : std_logic_vector(7 downto 0);
 	signal s_prgram_addr : std_logic_vector(10 downto 0);
 	signal s_prgram_q : std_logic_vector(7 downto 0);
 	signal s_prgram_write_enable : std_logic;
@@ -82,15 +76,10 @@ architecture behavioral of data_path is
 	signal s_ppu_addr : std_logic_vector(14 downto 0);
 	signal s_addr_type : addr_type_t;
 	signal s_addr_type_d : addr_type_t := nop;
+	signal s_prg_latch : std_logic_vector(7 downto 0);
+	signal s_prg_q : std_logic_vector(7 downto 0);
 	
 begin
-	prgrom : progmem port map
-	(
-		address => s_prgrom_addr,
-		clken => i_clk_enable,
-		clock => i_clk,
-		q => s_prgrom_q
-	);
 	prgram : datamem port map
 	(
 		address => s_prgram_addr,
@@ -117,17 +106,17 @@ begin
 						else nop;
 						
 	with s_addr_type_d select o_q <=
-		s_prgrom_q when rom,
+		s_prg_q when rom,
 		s_prgram_q when ram,
 		i_ppu_q when ppu,
 		i_apu_q when apu,
 		x"--" when others;
 	
 	s_prgram_addr <= i_addr(10 downto 0);
-	s_prgrom_addr <= i_addr(14 downto 0);
 	o_ppu_addr <= i_addr(2 downto 0);
 	o_apu_addr <= i_addr(4 downto 0);
 	
+	o_prg_write_enable <= i_write_enable when s_addr_type = rom else '0';
 	s_prgram_write_enable <= i_write_enable when s_addr_type = ram else '0';
 	o_ppu_write_enable <= i_write_enable when s_addr_type = ppu else '0';
 	o_apu_write_enable <= i_write_enable when s_addr_type = apu else '0';
@@ -136,5 +125,22 @@ begin
 	o_apu_data <= i_data;
 	o_ppu_cs_n <= not i_sync when s_addr_type = ppu else '1';
 	o_apu_cs_n <= not i_clk_enable when s_addr_type = apu else '1';
+	
+	o_prg_addr <= i_addr(14 downto 0);
+	o_prg_data <= i_data;
+	o_prg_cs_n <= not i_sync when s_addr_type = rom else '1';
+
+	s_prg_latch <= i_prg_q when i_sync = '1' else s_prg_latch;
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_reset_n = '0' then
+				s_prg_q <= (others => '0');
+			elsif i_clk_enable = '1' then
+				s_prg_q <= s_prg_latch;
+			end if;
+		end if;
+	end process;
 	
 end;

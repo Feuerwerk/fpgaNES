@@ -652,6 +652,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
+use work.common.all;
 
 entity noise_channel is
 	port
@@ -668,6 +669,7 @@ entity noise_channel is
 		i_cs_n : in std_logic := '1';
 		i_enable : in std_logic := '0';
 		i_reload : in std_logic := '0';
+		i_video_mode : in video_mode_t := ntsc;
 		o_active : out std_logic;
 		o_q : out std_logic_vector(3 downto 0)
 	);
@@ -711,9 +713,11 @@ architecture behavioral of noise_channel is
 	*/
 
 	type period_table_t is array (0 to 15) of std_logic_vector(11 downto 0);
-	constant PERIOD_TABLE : period_table_t := ( 12x"0004", 12x"0008", 12x"0010", 12x"0020", 12x"0040", 12x"0060", 12x"0080", 12x"00A0",
-															  12x"00CA", 12x"00FE", 12x"017C", 12x"01FC", 12x"02FA", 12x"03F8", 12x"07F2", 12x"0FE4" );
-
+	constant PERIOD_TABLE_NTSC : period_table_t := ( 12x"0004", 12x"0008", 12x"0010", 12x"0020", 12x"0040", 12x"0060", 12x"0080", 12x"00A0",
+												                12x"00CA", 12x"00FE", 12x"017C", 12x"01FC", 12x"02FA", 12x"03F8", 12x"07F2", 12x"0FE4" );
+	constant PERIOD_TABLE_PAL : period_table_t := ( 12x"0004", 12x"0008", 12x"000E", 12x"001E", 12x"003C", 12x"0058", 12x"0076", 12x"0094",
+												               12x"00BC", 12x"00EC", 12x"0162", 12x"01D8", 12x"02C4", 12x"03B0", 12x"0762", 12x"0EC2" );
+																	
 	signal s_envelope_reload : boolean := false;
 	signal s_envelope_loop : std_logic := '0';
 	signal s_envelope_disable : std_logic := '1';
@@ -731,6 +735,7 @@ architecture behavioral of noise_channel is
 	signal s_write_r0 : boolean;
 	signal s_write_r2 : boolean;
 	signal s_write_r3 : boolean;
+	signal s_period_table : period_table_t;
 begin
 
 	ev : envelope port map
@@ -791,7 +796,7 @@ begin
 				if s_write_r2 then
 					s_shift_mode <= i_data(7);
 					period_index := to_integer(unsigned(i_data(3 downto 0)));
-					s_timer_value <= PERIOD_TABLE(period_index);
+					s_timer_value <= s_period_table(period_index);
 				end if;
 			end if;
 		end if;
@@ -849,6 +854,7 @@ begin
 	s_write_r0 <= s_write_ch and (i_addr = "00");
 	s_write_r2 <= s_write_ch and (i_addr = "10");
 	s_write_r3 <= s_write_ch and (i_addr = "11");
+	s_period_table <= PERIOD_TABLE_PAL when i_video_mode = pal else PERIOD_TABLE_NTSC;
 	
 	o_active <= s_length_active;
 	o_q <= s_envelope_q when (s_noise_shift(0) = '0') and (s_length_active = '1') else "0000";
@@ -861,6 +867,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
+use work.common.all;
 
 entity dmc_channel is
 	port
@@ -876,6 +883,7 @@ entity dmc_channel is
 		i_cs_n : in std_logic := '1';
 		i_enable : in std_logic := '0';
 		i_reload : in std_logic := '0';
+		i_video_mode : in video_mode_t := ntsc;
 		o_dma_request : out std_logic;
 		o_dma_addr : out std_logic_vector(15 downto 0);
 		o_active : out std_logic;
@@ -886,8 +894,10 @@ end dmc_channel;
 
 architecture behavioral of dmc_channel is
 	type period_t is array (0 to 15) of std_logic_vector(8 downto 0);
-	constant PERIOD_TABLE : period_t := ( 9x"1AB", 9x"17B", 9x"153", 9x"13F", 9x"11D", 9x"0FD", 9x"0E1", 9x"0D5",
-	                                      9x"0BD", 9x"09F", 9x"08D", 9x"07F", 9x"069", 9x"053", 9x"047", 9x"035" );
+	constant PERIOD_TABLE_NTSC : period_t := ( 9x"1AB", 9x"17B", 9x"153", 9x"13F", 9x"11D", 9x"0FD", 9x"0E1", 9x"0D5",
+	                                           9x"0BD", 9x"09F", 9x"08D", 9x"07F", 9x"069", 9x"053", 9x"047", 9x"035" );
+	constant PERIOD_TABLE_PAL : period_t := ( 9x"18E", 9x"162", 9x"13C", 9x"12A", 9x"114", 9x"0EC", 9x"0D2", 9x"0C6",
+	                                          9x"0B0", 9x"094", 9x"084", 9x"076", 9x"062", 9x"04E", 9x"042", 9x"032" );
 	
 	signal s_int_enable : std_logic := '0';
 	signal s_loop : std_logic := '0';
@@ -917,6 +927,7 @@ architecture behavioral of dmc_channel is
 	signal s_int_trigger : boolean := false;
 	signal s_dma_free : boolean;
 	signal s_dma_done : boolean;
+	signal s_period_table : period_t;
 	
 begin
 
@@ -944,7 +955,7 @@ begin
 			elsif i_clk_enable = '1' then
 				if s_write_r0 then
 					period_index := to_integer(unsigned(i_data(3 downto 0)));
-					s_timer_value <= PERIOD_TABLE(period_index);
+					s_timer_value <= s_period_table(period_index);
 				end if;
 			end if;
 		end if;
@@ -1158,6 +1169,7 @@ begin
 	s_next_output <= ('0' & s_output) + x"02" when s_shift_buffer(0) = '1' else ('0' & s_output - x"02");
 	s_dma_free <= (s_dma_request = '0') and (i_dma_busy = '0');
 	s_dma_done <= (s_dma_busy_d = '1') and (i_dma_busy = '0');
+	s_period_table <= PERIOD_TABLE_PAL when i_video_mode = pal else PERIOD_TABLE_NTSC;
 	
 	o_active <= '0' when s_length = 12x"000" else '1';
 	o_q <= s_output;
@@ -1355,6 +1367,7 @@ entity apu is
 		i_dma_q : in std_logic_vector(7 downto 0) := x"00";
 		i_ctrl_a_data : in std_logic := '1';
 		i_ctrl_b_data : in std_logic := '1';
+		i_video_mode : in video_mode_t := ntsc;
 		o_ctrl_strobe : out std_logic;
 		o_ctrl_a_clk : out std_logic;
 		o_ctrl_b_clk : out std_logic;
@@ -1426,6 +1439,7 @@ architecture behavioral of apu is
 			i_cs_n : in std_logic := '1';
 			i_enable : in std_logic := '0';
 			i_reload : in std_logic := '0';
+			i_video_mode : in video_mode_t := ntsc;
 			o_active : out std_logic;
 			o_q : out std_logic_vector(3 downto 0)
 		);
@@ -1444,6 +1458,7 @@ architecture behavioral of apu is
 			i_cs_n : in std_logic := '1';
 			i_enable : in std_logic := '0';
 			i_reload : in std_logic := '0';
+			i_video_mode : in video_mode_t := ntsc;
 			o_dma_request : out std_logic;
 			o_dma_addr : out std_logic_vector(15 downto 0);
 			o_active : out std_logic;
@@ -1674,6 +1689,7 @@ begin
 		i_cs_n => i_cs_n or i_addr(4) or not i_addr(3) or not i_addr(2),
 		i_enable => s_noise_enable,
 		i_reload => s_reload,
+		i_video_mode => i_video_mode,
 		o_active => s_noise_active,
 		o_q => s_noise_q
 	);
@@ -1691,6 +1707,7 @@ begin
 		i_cs_n => i_cs_n or not i_addr(4) or i_addr(3) or i_addr(2),
 		i_enable => s_dmc_enable,
 		i_reload => s_reload,
+		i_video_mode => i_video_mode,
 		o_dma_request => s_dmc_request,
 		o_dma_addr => s_dmc_addr,
 		o_active => s_dmc_active,

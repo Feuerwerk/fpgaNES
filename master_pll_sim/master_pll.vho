@@ -1,5 +1,5 @@
 --IP Functional Simulation Model
---VERSION_BEGIN 15.1 cbx_mgl 2016:02:01:19:07:00:SJ cbx_simgen 2016:02:01:19:04:59:SJ  VERSION_END
+--VERSION_BEGIN 16.0 cbx_mgl 2016:06:01:18:07:45:SJ cbx_simgen 2016:06:01:18:06:41:SJ  VERSION_END
 
 
 -- Copyright (C) 1991-2016 Altera Corporation. All rights reserved.
@@ -36,6 +36,8 @@
 	 ( 
 		 locked	:	OUT  STD_LOGIC;
 		 outclk_0	:	OUT  STD_LOGIC;
+		 reconfig_from_pll	:	OUT  STD_LOGIC_VECTOR (63 DOWNTO 0);
+		 reconfig_to_pll	:	IN  STD_LOGIC_VECTOR (63 DOWNTO 0);
 		 refclk	:	IN  STD_LOGIC;
 		 rst	:	IN  STD_LOGIC
 	 ); 
@@ -46,34 +48,38 @@
 	 ATTRIBUTE synthesis_clearbox : natural;
 	 ATTRIBUTE synthesis_clearbox OF RTL : ARCHITECTURE IS 1;
 	 SIGNAL  wire_gnd	:	STD_LOGIC;
-	 SIGNAL  wire_master_pll_altera_pll_altera_pll_i_639_locked	:	STD_LOGIC;
-	 SIGNAL  wire_master_pll_altera_pll_altera_pll_i_639_outclk	:	STD_LOGIC_VECTOR (0 DOWNTO 0);
+	 SIGNAL  wire_master_pll_altera_pll_altera_pll_i_640_locked	:	STD_LOGIC;
+	 SIGNAL  wire_master_pll_altera_pll_altera_pll_i_640_outclk	:	STD_LOGIC_VECTOR (0 DOWNTO 0);
+	 SIGNAL  wire_master_pll_altera_pll_altera_pll_i_640_reconfig_from_pll	:	STD_LOGIC_VECTOR (63 DOWNTO 0);
+	 SIGNAL  wire_master_pll_altera_pll_altera_pll_i_640_reconfig_to_pll	:	STD_LOGIC_VECTOR (63 DOWNTO 0);
  BEGIN
 
 	wire_gnd <= '0';
-	locked <= wire_master_pll_altera_pll_altera_pll_i_639_locked;
-	outclk_0 <= wire_master_pll_altera_pll_altera_pll_i_639_outclk(0);
-	master_pll_altera_pll_altera_pll_i_639 :  altera_pll
+	locked <= wire_master_pll_altera_pll_altera_pll_i_640_locked;
+	outclk_0 <= wire_master_pll_altera_pll_altera_pll_i_640_outclk(0);
+	reconfig_from_pll <= ( wire_master_pll_altera_pll_altera_pll_i_640_reconfig_from_pll(63 DOWNTO 0));
+	wire_master_pll_altera_pll_altera_pll_i_640_reconfig_to_pll <= ( reconfig_to_pll(63 DOWNTO 0));
+	master_pll_altera_pll_altera_pll_i_640 :  altera_pll
 	  GENERIC MAP (
 		c_cnt_bypass_en0 => "false",
-		c_cnt_bypass_en1 => "false",
-		c_cnt_bypass_en10 => "false",
-		c_cnt_bypass_en11 => "false",
-		c_cnt_bypass_en12 => "false",
-		c_cnt_bypass_en13 => "false",
-		c_cnt_bypass_en14 => "false",
-		c_cnt_bypass_en15 => "false",
-		c_cnt_bypass_en16 => "false",
-		c_cnt_bypass_en17 => "false",
-		c_cnt_bypass_en2 => "false",
-		c_cnt_bypass_en3 => "false",
-		c_cnt_bypass_en4 => "false",
-		c_cnt_bypass_en5 => "false",
-		c_cnt_bypass_en6 => "false",
-		c_cnt_bypass_en7 => "false",
-		c_cnt_bypass_en8 => "false",
-		c_cnt_bypass_en9 => "false",
-		c_cnt_hi_div0 => 1,
+		c_cnt_bypass_en1 => "true",
+		c_cnt_bypass_en10 => "true",
+		c_cnt_bypass_en11 => "true",
+		c_cnt_bypass_en12 => "true",
+		c_cnt_bypass_en13 => "true",
+		c_cnt_bypass_en14 => "true",
+		c_cnt_bypass_en15 => "true",
+		c_cnt_bypass_en16 => "true",
+		c_cnt_bypass_en17 => "true",
+		c_cnt_bypass_en2 => "true",
+		c_cnt_bypass_en3 => "true",
+		c_cnt_bypass_en4 => "true",
+		c_cnt_bypass_en5 => "true",
+		c_cnt_bypass_en6 => "true",
+		c_cnt_bypass_en7 => "true",
+		c_cnt_bypass_en8 => "true",
+		c_cnt_bypass_en9 => "true",
+		c_cnt_hi_div0 => 22,
 		c_cnt_hi_div1 => 1,
 		c_cnt_hi_div10 => 1,
 		c_cnt_hi_div11 => 1,
@@ -109,7 +115,7 @@
 		c_cnt_in_src7 => "ph_mux_clk",
 		c_cnt_in_src8 => "ph_mux_clk",
 		c_cnt_in_src9 => "ph_mux_clk",
-		c_cnt_lo_div0 => 1,
+		c_cnt_lo_div0 => 22,
 		c_cnt_lo_div1 => 1,
 		c_cnt_lo_div10 => 1,
 		c_cnt_lo_div11 => 1,
@@ -221,13 +227,13 @@
 		duty_cycle9 => 50,
 		fractional_vco_multiplier => "false",
 		m_cnt_bypass_en => "false",
-		m_cnt_hi_div => 1,
-		m_cnt_lo_div => 1,
-		m_cnt_odd_div_duty_en => "false",
-		mimic_fbclk_type => "gclk",
+		m_cnt_hi_div => 95,
+		m_cnt_lo_div => 94,
+		m_cnt_odd_div_duty_en => "true",
+		mimic_fbclk_type => "none",
 		n_cnt_bypass_en => "false",
-		n_cnt_hi_div => 1,
-		n_cnt_lo_div => 1,
+		n_cnt_hi_div => 5,
+		n_cnt_lo_div => 5,
 		n_cnt_odd_div_duty_en => "false",
 		number_of_clocks => 1,
 		operation_mode => "direct",
@@ -269,25 +275,25 @@
 		phase_shift9 => "0 ps",
 		pll_auto_clk_sw_en => "false",
 		pll_bw_sel => "low",
-		pll_bwctrl => 0,
+		pll_bwctrl => 12000,
 		pll_clk_loss_sw_en => "false",
 		pll_clk_sw_dly => 0,
 		pll_clkin_0_src => "clk_0",
 		pll_clkin_1_src => "clk_0",
-		pll_cp_current => 0,
+		pll_cp_current => 20,
 		pll_dsm_out_sel => "1st_order",
 		pll_extclk_0_cnt_src => "pll_extclk_cnt_src_vss",
 		pll_extclk_1_cnt_src => "pll_extclk_cnt_src_vss",
 		pll_fbclk_mux_1 => "glb",
-		pll_fbclk_mux_2 => "fb_1",
-		pll_fractional_cout => 24,
+		pll_fbclk_mux_2 => "m_cnt",
+		pll_fractional_cout => 32,
 		pll_fractional_division => 1,
 		pll_m_cnt_in_src => "ph_mux_clk",
 		pll_manu_clk_sw_en => "false",
-		pll_output_clk_frequency => "0 MHz",
+		pll_output_clk_frequency => "945.0 MHz",
 		pll_slf_rst => "false",
-		pll_subtype => "General",
-		pll_type => "General",
+		pll_subtype => "Reconfigurable",
+		pll_type => "Cyclone V",
 		pll_vco_div => 1,
 		pll_vcoph_div => 1,
 		refclk1_frequency => "0 MHz",
@@ -296,8 +302,10 @@
 	  )
 	  PORT MAP ( 
 		fbclk => wire_gnd,
-		locked => wire_master_pll_altera_pll_altera_pll_i_639_locked,
-		outclk => wire_master_pll_altera_pll_altera_pll_i_639_outclk,
+		locked => wire_master_pll_altera_pll_altera_pll_i_640_locked,
+		outclk => wire_master_pll_altera_pll_altera_pll_i_640_outclk,
+		reconfig_from_pll => wire_master_pll_altera_pll_altera_pll_i_640_reconfig_from_pll,
+		reconfig_to_pll => wire_master_pll_altera_pll_altera_pll_i_640_reconfig_to_pll,
 		refclk => refclk,
 		rst => rst
 	  );

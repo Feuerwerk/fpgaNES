@@ -15,33 +15,71 @@
 # ----------------------------------------
 # Auto-generated simulation script msim_setup.tcl
 # ----------------------------------------
-# This script can be used to simulate the following IP:
+# This script provides commands to simulate the following IP detected in
+# your Quartus project:
 #     master_pll
-# To create a top-level simulation script which compiles other
-# IP, and manages other system issues, copy the following template
-# and adapt it to your needs:
 # 
-# # Start of template
-# # If the copied and modified template file is "mentor.do", run it as:
-# #   vsim -c -do mentor.do
+# Altera recommends that you source this Quartus-generated IP simulation
+# script from your own customized top-level script, and avoid editing this
+# generated script.
+# 
+# To write a top-level script that compiles Altera simulation libraries and
+# the Quartus-generated IP in your project, along with your design and
+# testbench files, copy the text from the TOP-LEVEL TEMPLATE section below
+# into a new file, e.g. named "mentor.do", and modify the text as directed.
+# 
+# ----------------------------------------
+# # TOP-LEVEL TEMPLATE - BEGIN
 # #
-# # Source the generated sim script
-# source msim_setup.tcl
-# # Compile eda/sim_lib contents first
+# # QSYS_SIMDIR is used in the Quartus-generated IP simulation script to
+# # construct paths to the files required to simulate the IP in your Quartus
+# # project. By default, the IP script assumes that you are launching the
+# # simulator from the IP script location. If launching from another
+# # location, set QSYS_SIMDIR to the output directory you specified when you
+# # generated the IP script, relative to the directory from which you launch
+# # the simulator.
+# #
+# set QSYS_SIMDIR <script generation output directory>
+# #
+# # Source the generated IP simulation script.
+# source $QSYS_SIMDIR/mentor/msim_setup.tcl
+# #
+# # Set any compilation options you require (this is unusual).
+# set USER_DEFINED_COMPILE_OPTIONS <compilation options>
+# #
+# # Call command to compile the Quartus EDA simulation library.
 # dev_com
-# # Override the top-level name (so that elab is useful)
-# set TOP_LEVEL_NAME top
-# # Compile the standalone IP.
+# #
+# # Call command to compile the Quartus-generated IP simulation files.
 # com
-# # Compile the user top-level
-# vlog -sv ../../top.sv
-# # Elaborate the design.
+# #
+# # Add commands to compile all design files and testbench files, including
+# # the top level. (These are all the files required for simulation other
+# # than the files compiled by the Quartus-generated IP simulation script)
+# #
+# vlog <compilation options> <design and testbench files>
+# #
+# # Set the top-level simulation or testbench module/entity name, which is
+# # used by the elab command to elaborate the top level.
+# #
+# set TOP_LEVEL_NAME <simulation top>
+# #
+# # Set any elaboration options you require.
+# set USER_DEFINED_ELAB_OPTIONS <elaboration options>
+# #
+# # Call command to elaborate your design and testbench.
 # elab
-# # Run the simulation
+# #
+# # Run the simulation.
 # run -a
-# # Report success to the shell
+# #
+# # Report success to the shell.
 # exit -code 0
-# # End of template
+# #
+# # TOP-LEVEL TEMPLATE - END
+# ----------------------------------------
+# 
+# IP SIMULATION SCRIPT
 # ----------------------------------------
 # If master_pll is one of several IP cores in your
 # Quartus project, you can generate a simulation script
@@ -54,7 +92,7 @@
 # within the Quartus project, and generate a unified
 # script which supports all the Altera IP within the design.
 # ----------------------------------------
-# ACDS 15.1 193 win32 2016.03.30.03:28:21
+# ACDS 16.0 218 win32 2016.08.12.10:47:33
 
 # ----------------------------------------
 # Initialize variables
@@ -73,7 +111,7 @@ if ![info exists QSYS_SIMDIR] {
 }
 
 if ![info exists QUARTUS_INSTALL_DIR] { 
-  set QUARTUS_INSTALL_DIR "C:/altera/15.1/quartus/"
+  set QUARTUS_INSTALL_DIR "C:/altera/16.0/quartus/"
 }
 
 if ![info exists USER_DEFINED_COMPILE_OPTIONS] { 

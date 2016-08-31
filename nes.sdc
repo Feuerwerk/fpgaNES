@@ -54,7 +54,8 @@ derive_clock_uncertainty
 #**************************************************************
 # Set False Path
 #**************************************************************
-set_false_path -from {audio|audio_pll_inst|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER|divclk} -to {master|master_pll_inst|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER|divclk}
+set_false_path -from {audio|audio_pll_inst|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER|divclk} -to {master|master_pll_inst|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk}
+
 
 
 #**************************************************************

@@ -760,10 +760,6 @@ use ieee.numeric_std.all;
 use work.common.all;
 
 entity cpu is
-	generic
-	(
-		DIVIDER : integer := 12
-	);
 	port
 	(
 		i_clk : in std_logic;
@@ -772,6 +768,7 @@ entity cpu is
 		i_int_n : in std_logic := '1';
 		i_nmi_n : in std_logic := '1';
 		i_mem_q : in std_logic_vector(7 downto 0) := x"00";
+		i_video_mode : in video_mode_t;
 		o_mem_addr : out std_logic_vector(15 downto 0);
 		o_mem_data : out std_logic_vector(7 downto 0);
 		o_mem_write_enable : out std_logic;
@@ -884,10 +881,11 @@ architecture behavioral of cpu is
 	signal s_clk_enable : std_logic;
 	signal s_ready_d : std_logic := '1';
 	signal s_sync_edge : std_logic;
-	signal s_clk_divider : integer range 0 to DIVIDER - 1 := 0;
+	signal s_clk_divider : natural := 0;
 	signal s_opcode_change : opcode_t := def;
 	signal s_mem_q : std_logic_vector(7 downto 0);
 	signal s_mem_q_d : std_logic_vector(7 downto 0) := x"00";
+	signal s_divider : natural;
 	alias s_alu_res : std_logic_vector(7 downto 0) is s_alu_q(7 downto 0);
 	alias s_alu_c : std_logic is s_alu_q(8);
 	
@@ -924,12 +922,25 @@ begin
 	
 	-- Clock Divider & Internal Clock
 	
+	process (i_video_mode)
+	begin
+		case i_video_mode is
+		
+			when ntsc =>
+				s_divider <= 12;
+				
+			when pal =>
+				s_divider <= 16;
+			
+		end case;
+	end process;
+	
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_clk_divider <= 0;
-			elsif s_clk_divider = DIVIDER - 1 then
+			elsif s_clk_divider = s_divider - 1 then
 				s_clk_divider <= 0;
 			else
 				s_clk_divider <= s_clk_divider + 1;
@@ -950,7 +961,7 @@ begin
 		end if;
 	end process;
 	
-	s_internal_clk <= '1' when s_clk_divider = DIVIDER - 1 else '0';
+	s_internal_clk <= '1' when s_clk_divider = s_divider - 1 else '0';
 	s_clk_enable <= s_internal_clk and i_ready;
 	
 	-- Memory-Access

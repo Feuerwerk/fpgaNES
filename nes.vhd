@@ -19,6 +19,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
+use work.common.all;
 
 entity nes is
 	port
@@ -36,10 +37,30 @@ entity nes is
 		GPIO : inout std_logic_vector(21 downto 0);
 		LEDG : out std_logic_vector(7 downto 0);
 		LEDR : out std_logic_vector(9 downto 0);
-		HEX0: out std_logic_vector(6 downto 0);
-		HEX1: out std_logic_vector(6 downto 0);
-		HEX2: out std_logic_vector(6 downto 0);
-		HEX3: out std_logic_vector(6 downto 0);
+		HEX0 : out std_logic_vector(6 downto 0);
+		HEX1 : out std_logic_vector(6 downto 0);
+		HEX2 : out std_logic_vector(6 downto 0);
+		HEX3 : out std_logic_vector(6 downto 0);
+		CPU_ADDR : out std_logic_vector(14 downto 0);
+		CPU_DATA : inout std_logic_vector(7 downto 0);
+		CPU_DIR : out std_logic;
+		CPU_RW : out std_logic;
+		PPU_ADDR : out std_logic_vector(13 downto 0);
+		PPU_A13_N : out std_logic;
+		PPU_DATA : inout std_logic_vector(7 downto 0);
+		PPU_DIR : out std_logic;
+		PPU_RD_N : out std_logic;
+		PPU_WR_N : out std_logic;
+		ROMSEL_N : out std_logic;
+		CIRAM_CE_N : in std_logic;
+		CIRAM_A10 : in std_logic;
+		M2 : out std_logic;
+		SYS_CLK : out std_logic;
+		IRQ_N : in std_logic;
+		CIC_CLK : out std_logic;
+		CIC_TOPAK : out std_logic;
+		CIC_RST_N : out std_logic;
+		CIC_TOMB : in std_logic;
 		HDMI_TX_CLK : out std_logic;
 		HDMI_TX_D : out std_logic_vector(23 downto 0);
 		HDMI_TX_DE : out std_logic;
@@ -62,17 +83,19 @@ architecture behavioral of nes is
 	component master_pll is
 		port
 		(
-			refclk : in  std_logic := '0';
-			rst : in  std_logic := '0';
+			refclk : in std_logic := '0';
+			rst : in std_logic := '0';
 			outclk_0 : out std_logic;
-			locked : out std_logic
+			locked : out std_logic;
+			reconfig_to_pll : in  std_logic_vector(63 downto 0) := (others => '0');
+			reconfig_from_pll : out std_logic_vector(63 downto 0)
 		);
 	end component;
 	component audio_pll is
 		port
 		(
-			refclk : in  std_logic := '0';
-			rst : in  std_logic := '0';
+			refclk : in std_logic := '0';
+			rst : in std_logic := '0';
 			outclk_0 : out std_logic;
 			locked : out std_logic
 		);
@@ -81,7 +104,7 @@ architecture behavioral of nes is
 		port
 		(
 			refclk : in  std_logic := '0';
-			rst : in  std_logic := '0';
+			rst : in std_logic := '0';
 			outclk_0 : out std_logic;
 			locked : out std_logic
 		);
@@ -93,10 +116,25 @@ architecture behavioral of nes is
 			i_reset_n : in std_logic := '1';
 			i_ctrl_a_data : in std_logic := '1';
 			i_ctrl_b_data : in std_logic := '1';
+			i_video_mode : in video_mode_t := ntsc;
+			i_ciram_ce_n : in std_logic;
+			i_ciram_a10 : in std_logic;
+			i_prg_q : in std_logic_vector(7 downto 0);
+			i_chr_q : in std_logic_vector(7 downto 0);
+			i_irq_n : in std_logic := '1';
+			o_prg_addr : out std_logic_vector(14 downto 0);
+			o_prg_data : out std_logic_vector(7 downto 0);
+			o_prg_write_enable : out std_logic;
+			o_prg_cs_n : out std_logic;
+			o_chr_addr : out std_logic_vector(13 downto 0);
+			o_chr_data : out std_logic_vector(7 downto 0);
+			o_chr_read_enable : out std_logic;
+			o_chr_write_enable : out std_logic;
 			o_ctrl_strobe : out std_logic;
 			o_ctrl_a_clk : out std_logic;
 			o_ctrl_b_clk : out std_logic;
 			o_cpu_clk_enable : out std_logic;
+			o_cpu_phi2 : out std_logic;
 			o_vga_addr : out std_logic_vector(15 downto 0);
 			o_vga_data : out std_logic_vector(5 downto 0);
 			o_vga_write_enable : out std_logic;
@@ -175,6 +213,41 @@ architecture behavioral of nes is
 			o_ack_error : out std_logic
 		);
 	end component;
+	component master_reconfig is
+		generic (
+			ENABLE_BYTEENABLE : boolean := false;
+			BYTEENABLE_WIDTH : integer := 4;
+			RECONFIG_ADDR_WIDTH : integer := 6;
+			RECONFIG_DATA_WIDTH : integer := 32;
+			reconf_width : integer := 64
+		);
+		port (
+			mgmt_clk : in  std_logic := '0';
+			mgmt_reset : in  std_logic := '0';
+			mgmt_waitrequest : out std_logic;
+			mgmt_read : in  std_logic := '0';
+			mgmt_write : in  std_logic := '0';
+			mgmt_readdata : out std_logic_vector(31 downto 0);
+			mgmt_address : in  std_logic_vector(5 downto 0) := (others => '0');
+			mgmt_writedata : in  std_logic_vector(31 downto 0) := (others => '0');
+			reconfig_to_pll : out std_logic_vector(63 downto 0);
+			reconfig_from_pll : in  std_logic_vector(63 downto 0) := (others => '0')
+		);
+	end component;
+	component master_ctrl is
+		port
+		(
+			i_clk : in std_logic;
+			i_reset_n : in std_logic := '1';
+			i_video_mode : in video_mode_t;
+			i_enable : in std_logic;
+			i_reconfig_data : in std_logic_vector(31 downto 0) := (others => '0');
+			o_reconfig_read : out std_logic;
+			o_reconfig_write : out std_logic;
+			o_reconfig_addr : out std_logic_vector(5 downto 0);
+			o_reconfig_new_data : out std_logic_vector(31 downto 0)
+		);
+	end component;
 	
 	alias HDMI_AUDIO_SPDIF : std_logic is GPIO(0);
 	alias HDMI_AUDIO_MCLK : std_logic is GPIO(1);
@@ -201,7 +274,8 @@ architecture behavioral of nes is
 	signal s_vga_write_enable : std_logic;
 	signal s_vga_clk_enable : std_logic;
 	signal s_audio_q : std_logic_vector(15 downto 0);
-	signal s_debug : std_logic_vector(7 downto 0);
+	signal s_debug1 : std_logic_vector(7 downto 0);
+	signal s_debug2 : std_logic_vector(7 downto 0);
 	signal s_audio_counter : integer range 0 to 62499 := 0;
 	signal s_ack_error : std_logic;
 	signal s_audio_lrclk : std_logic;
@@ -209,6 +283,23 @@ architecture behavioral of nes is
 	signal s_audio_dat : std_logic;
 	signal s_sample_req : std_logic_vector(1 downto 0);
 	signal s_cpu_clk_enable : std_logic;
+	signal s_prg_addr : std_logic_vector(15 downto 0);
+	signal s_chr_addr : std_logic_vector(13 downto 0);
+	signal s_prg_data : std_logic_vector(7 downto 0);
+	signal s_chr_data : std_logic_vector(7 downto 0);
+	signal s_prg_write_enable : std_logic;
+	signal s_chr_read_enable : std_logic;
+	signal s_chr_write_enable : std_logic;
+	signal s_reconfig_to_pll : std_logic_vector(63 downto 0);
+	signal s_reconfig_from_pll : std_logic_vector(63 downto 0);
+	signal s_reconfig_read : std_logic := '0';
+	signal s_reconfig_write : std_logic := '0';
+	signal s_reconfig_addr : std_logic_vector(5 downto 0) := (others => '0');
+	signal s_reconfig_data : std_logic_vector(31 downto 0);
+	signal s_reconfig_new_data : std_logic_vector(31 downto 0) := (others => '0');
+	signal s_video_mode : video_mode_t;
+	signal s_key_d : std_logic_vector(3 downto 0) := (others => '1');
+	signal s_ppu_addr : std_logic_vector(13 downto 0) := (others => '0');
 
 begin
 	master : master_pll port map
@@ -216,7 +307,9 @@ begin
 		refclk => CLOCK_50_B5B,
 		rst => not CPU_RESET_n,
 		outclk_0 => s_master_clk,
-		locked => s_reset_n
+		locked => s_reset_n,
+		reconfig_to_pll => s_reconfig_to_pll,
+		reconfig_from_pll => s_reconfig_from_pll
 	);
 	audio : audio_pll port map
 	(
@@ -232,16 +325,54 @@ begin
 		outclk_0 => s_vga_clk,
 		locked => s_vga_reset_n
 	);
+	master_recfg : master_reconfig port map
+	(
+		mgmt_clk => CLOCK_50_B5B,
+		mgmt_reset => not CPU_RESET_n,
+		mgmt_read => s_reconfig_read,
+		mgmt_write => s_reconfig_write,
+		mgmt_address => s_reconfig_addr,
+		mgmt_readdata => s_reconfig_data,
+		mgmt_writedata => s_reconfig_new_data,
+		reconfig_to_pll => s_reconfig_to_pll,
+		reconfig_from_pll => s_reconfig_from_pll
+	);
+	master_c : master_ctrl port map (
+		i_clk => CLOCK_50_B5B,
+		i_reset_n => CPU_RESET_n,
+		i_video_mode => s_video_mode,
+		i_enable => '0',
+		i_reconfig_data => s_reconfig_data,
+		o_reconfig_read => s_reconfig_read,
+		o_reconfig_write => s_reconfig_write,
+		o_reconfig_addr => s_reconfig_addr,
+		o_reconfig_new_data => s_reconfig_new_data
+	);
 	nes_core : nescore port map
 	(
 		i_clk => s_master_clk,
 		i_reset_n  => s_reset_n,
 		i_ctrl_a_data => CTRL_A_DATA,
 		i_ctrl_b_data => CTRL_B_DATA,
+		i_video_mode => s_video_mode,
+		i_ciram_ce_n => CIRAM_CE_N,
+		i_ciram_a10 => CIRAM_A10,
+		i_prg_q => CPU_DATA,
+		i_chr_q => PPU_DATA,
+		i_irq_n => IRQ_N,
+		o_prg_addr => CPU_ADDR,
+		o_prg_data => s_prg_data,
+		o_prg_write_enable => s_prg_write_enable,
+		o_prg_cs_n => ROMSEL_N,
+		o_chr_addr => s_chr_addr,
+		o_chr_data => s_chr_data,
+		o_chr_read_enable => s_chr_read_enable,
+		o_chr_write_enable => s_chr_write_enable,
 		o_ctrl_strobe => CTRL_STROBE,
 		o_ctrl_a_clk => CTRL_A_CLOCK,
 		o_ctrl_b_clk => CTRL_B_CLOCK,
 		o_cpu_clk_enable => s_cpu_clk_enable,
+		o_cpu_phi2 => M2,
 		o_vga_addr => s_vga_addr,
 		o_vga_data => s_vga_data,
 		o_vga_write_enable => s_vga_write_enable,
@@ -281,7 +412,7 @@ begin
 		i_int_n => HDMI_TX_INT,
 		io_sda => I2C_SDA,
 		io_scl => I2C_SCL,
-		o_status => s_debug,
+--		o_status => s_debug,
 		o_ack_error => s_ack_error
 	);
 	i2s_cmp : i2s port map
@@ -298,22 +429,22 @@ begin
 	);
 	hd0 : hex_digit port map
 	(
-		i_d => s_debug(3 downto 0),
+		i_d => s_debug1(3 downto 0),
 		o_q => HEX0
 	);
 	hd1 : hex_digit port map
 	(
-		i_d => s_debug(7 downto 4),
+		i_d => s_debug1(7 downto 4),
 		o_q => HEX1
 	);
 	hd2 : hex_digit port map
 	(
-		i_d => s_debug(3 downto 0),
+		i_d => s_debug2(3 downto 0),
 		o_q => HEX2
 	);
 	hd3 : hex_digit port map
 	(
-		i_d => s_debug(7 downto 4),
+		i_d => s_debug2(7 downto 4),
 		o_q => HEX3
 	);
 
@@ -337,6 +468,55 @@ begin
 	CTRL_A_DATA <= 'Z';
 	CTRL_B_DATA <= 'Z';
 	
+	CPU_DATA <= s_prg_data when s_prg_write_enable = '1' else (others => 'Z');
+	CPU_DIR <= s_prg_write_enable;
+	CPU_RW <= not s_prg_write_enable;
+	PPU_ADDR <= s_chr_addr;
+	PPU_DATA <= s_chr_data when s_chr_write_enable = '1' else (others => 'Z');
+	PPU_DIR <= s_chr_write_enable;
+	PPU_RD_N <= not s_chr_read_enable;
+	PPU_WR_N <= not s_chr_write_enable;
+	PPU_A13_N <= not s_chr_addr(13);
+	SYS_CLK <= s_master_clk;
+	s_video_mode <= ntsc when SW(9) = '0' else pal;
+
+	/*
+	process (s_master_clk)
+	begin
+		if rising_edge(s_master_clk) then
+			if KEY(0) = '0' and s_key_d(0) = '1' then
+				s_ppu_addr <= s_ppu_addr + 14x"1";
+			end if;
+			
+			if KEY(1) = '0' and s_key_d(1) = '1' then
+				s_ppu_addr <= s_ppu_addr - 14x"1";
+			end if;
+			
+			if KEY(2) = '0' and s_key_d(2) = '1' then
+				s_ppu_addr <= s_ppu_addr + 14x"100";
+			end if;
+			
+			if KEY(3) = '0' and s_key_d(3) = '1' then
+				s_ppu_addr <= s_ppu_addr - 14x"100";
+			end if;
+			
+			s_key_d <= KEY;
+		end if;
+	end process;
+	
+	PPU_ADDR <= s_ppu_addr;
+	PPU_DATA <= (others => 'Z');
+	PPU_DIR <= '0';
+	PPU_RD_N <= '0';
+	PPU_WR_N <= '1';
+	PPU_A13_N <= not s_ppu_addr(13);
+	
+	LEDG <= "00000" & CIRAM_A10 & CIRAM_CE_N & IRQ_N;
+	LEDR(7 downto 0) <= "00" & s_ppu_addr(13 downto 8);
+	s_debug2 <= PPU_DATA;
+	s_debug1 <= s_ppu_addr(7 downto 0);
+	*/
+	
 end;
 
 
@@ -355,10 +535,25 @@ entity nescore is
 		i_reset_n : in std_logic := '1';
 		i_ctrl_a_data : in std_logic := '1';
 		i_ctrl_b_data : in std_logic := '1';
+		i_video_mode : in video_mode_t := ntsc;
+		i_ciram_ce_n : in std_logic := '1';
+		i_ciram_a10 : in std_logic := '0';
+		i_prg_q : in std_logic_vector(7 downto 0);
+		i_chr_q : in std_logic_vector(7 downto 0);
+		i_irq_n : in std_logic := '1';
+		o_prg_addr : out std_logic_vector(14 downto 0);
+		o_prg_data : out std_logic_vector(7 downto 0);
+		o_prg_write_enable : out std_logic;
+		o_prg_cs_n : out std_logic;
+		o_chr_addr : out std_logic_vector(13 downto 0);
+		o_chr_data : out std_logic_vector(7 downto 0);
+		o_chr_read_enable : out std_logic;
+		o_chr_write_enable : out std_logic;
 		o_ctrl_strobe : out std_logic;
 		o_ctrl_a_clk : out std_logic;
 		o_ctrl_b_clk : out std_logic;
 		o_cpu_clk_enable : out std_logic;
+		o_cpu_phi2 : out std_logic;
 		o_vga_addr : out std_logic_vector(15 downto 0);
 		o_vga_data : out std_logic_vector(5 downto 0);
 		o_vga_write_enable : out std_logic;
@@ -377,6 +572,7 @@ architecture behavioral of nescore is
 			i_int_n : in std_logic := '1';
 			i_nmi_n : in std_logic := '1';
 			i_mem_q : in std_logic_vector(7 downto 0) := x"00";
+			i_video_mode : in video_mode_t;
 			o_mem_addr : out std_logic_vector(15 downto 0);
 			o_mem_data : out std_logic_vector(7 downto 0);
 			o_mem_write_enable : out std_logic;
@@ -393,11 +589,17 @@ architecture behavioral of nescore is
 			i_data : in std_logic_vector(7 downto 0) := x"00";
 			i_write_enable : in std_logic := '0';
 			i_cs_n : in std_logic := '0';
+			i_video_mode : in video_mode_t := ntsc;
+			i_chr_data : in std_logic_vector(7 downto 0) := x"00";
 			o_q : out std_logic_vector(7 downto 0);
 			o_int_n : out std_logic;
 			o_vga_addr: out std_logic_vector(15 downto 0);
 			o_vga_data: out std_logic_vector(5 downto 0);
 			o_vga_write_enable: out std_logic;
+			o_chr_addr : out std_logic_vector(13 downto 0);
+			o_chr_read_enable : out std_logic;
+			o_chr_write_enable : out std_logic;
+			o_chr_q : out std_logic_vector(7 downto 0);
 			o_phi0 : out std_logic
 		);
 	end component;
@@ -415,6 +617,7 @@ architecture behavioral of nescore is
 			i_dma_q : in std_logic_vector(7 downto 0) := x"00";
 			i_ctrl_a_data : in std_logic := '1';
 			i_ctrl_b_data : in std_logic := '1';
+			i_video_mode : in video_mode_t := ntsc;
 			o_ctrl_strobe : out std_logic;
 			o_ctrl_a_clk : out std_logic;
 			o_ctrl_b_clk : out std_logic;
@@ -440,6 +643,11 @@ architecture behavioral of nescore is
 			i_write_enable : in std_logic;
 			i_ppu_q : in std_logic_vector(7 downto 0);
 			i_apu_q : in std_logic_vector(7 downto 0);
+			i_prg_q : in std_logic_vector(7 downto 0);
+			o_prg_addr : out std_logic_vector(14 downto 0);
+			o_prg_data : out std_logic_vector(7 downto 0);
+			o_prg_cs_n : out std_logic;
+			o_prg_write_enable : out std_logic;
 			o_ppu_addr : out std_logic_vector(2 downto 0);
 			o_ppu_data : out std_logic_vector(7 downto 0);
 			o_ppu_write_enable : out std_logic;
@@ -449,6 +657,18 @@ architecture behavioral of nescore is
 			o_apu_write_enable : out std_logic;
 			o_apu_cs_n : out std_logic;
 			o_q : out std_logic_vector(7 downto 0)
+		);
+	end component;
+	component videomem is
+		port
+		(
+			address : in std_logic_vector(10 downto 0);
+			clken : in std_logic := '1';
+			clock : in std_logic := '1';
+			data : in std_logic_vector(7 downto 0);
+			rden : in std_logic := '0';
+			wren : in std_logic := '0';
+			q : out std_logic_vector(7 downto 0)
 		);
 	end component;
 	
@@ -463,6 +683,7 @@ architecture behavioral of nescore is
 	signal s_apu_data : std_logic_vector(7 downto 0);
 	signal s_apu_write_enable : std_logic;
 	signal s_apu_cs_n : std_logic;
+	signal s_apu_int_n : std_logic;
 	signal s_apu_q : std_logic_vector(7 downto 0);
 	signal s_nmi_n : std_logic;
 	signal s_int_n : std_logic;
@@ -478,6 +699,15 @@ architecture behavioral of nescore is
 	signal s_dma_write_enable : std_logic;
 	signal s_dma_ready : std_logic;
 	signal s_dma_active : std_logic;
+	signal s_chr_addr : std_logic_vector(13 downto 0);
+	signal s_chr_q : std_logic_vector(7 downto 0);
+	signal s_chr_data : std_logic_vector(7 downto 0);
+	signal s_chr_latch : std_logic_vector(7 downto 0);
+	signal s_chr_read_enable : std_logic;
+	signal s_chr_write_enable : std_logic;
+	signal s_ppu_clk_enable : std_logic;
+	signal s_video_q : std_logic_vector(7 downto 0);
+	signal s_ciram_ce_n_d : std_logic := '1';
 	
 begin
 
@@ -489,6 +719,7 @@ begin
 		i_nmi_n => s_nmi_n,
 		i_int_n => s_int_n,
 		i_mem_q => s_mem_q,
+		i_video_mode => i_video_mode,
 		o_mem_addr => s_mem_addr,
 		o_mem_data => s_mem_data,
 		o_mem_write_enable => s_mem_write_enable,
@@ -503,12 +734,18 @@ begin
 		i_data => s_ppu_data,
 		i_write_enable => s_ppu_write_enable,
 		i_cs_n => s_ppu_cs_n,
+		i_video_mode => i_video_mode,
+		i_chr_data => s_chr_q,
 		o_q => s_ppu_q,
 		o_int_n => s_nmi_n,
 		o_vga_addr => o_vga_addr,
 		o_vga_data => o_vga_data,
 		o_vga_write_enable => o_vga_write_enable,
-		o_phi0 => o_vga_clk_enable
+		o_chr_addr => s_chr_addr,
+		o_chr_q => s_chr_data,
+		o_chr_read_enable => s_chr_read_enable,
+		o_chr_write_enable => s_chr_write_enable,
+		o_phi0 => s_ppu_clk_enable
 	);
 	apu_core : apu port map
 	(
@@ -523,10 +760,11 @@ begin
 		i_ctrl_b_data => i_ctrl_b_data,
 		i_dma_write_enable => s_mem_write_enable,
 		i_dma_q => s_mem_q,
+		i_video_mode => i_video_mode,
 		o_ctrl_strobe => o_ctrl_strobe,
 		o_ctrl_a_clk => o_ctrl_a_clk,
 		o_ctrl_b_clk => o_ctrl_b_clk,
-		o_int_n => s_int_n,
+		o_int_n => s_apu_int_n,
 		o_audio => o_audio_q,
 		o_q => s_apu_q,
 		o_dma_addr => s_dma_addr,
@@ -546,6 +784,11 @@ begin
 		i_write_enable => s_eff_write_enable,
 		i_ppu_q => s_ppu_q,
 		i_apu_q => s_apu_q,
+		i_prg_q => i_prg_q,
+		o_prg_addr => o_prg_addr,
+		o_prg_data => o_prg_data,
+		o_prg_cs_n => o_prg_cs_n,
+		o_prg_write_enable => o_prg_write_enable,
 		o_ppu_addr => s_ppu_addr,
 		o_ppu_data => s_ppu_data,
 		o_ppu_write_enable => s_ppu_write_enable,
@@ -556,12 +799,169 @@ begin
 		o_apu_cs_n => s_apu_cs_n,
 		o_q => s_mem_q
 	);
+	vram: videomem port map
+	(
+		address => i_ciram_a10 & s_chr_addr(9 downto 0),
+		clken => /*s_ppu_clk_enable and*/ not i_ciram_ce_n,
+		clock => i_clk,
+		data => s_chr_data,
+		rden => s_chr_read_enable,
+		wren => s_chr_write_enable,
+		q => s_video_q
+	);
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_reset_n = '0' then
+				s_ciram_ce_n_d <= '1';
+			elsif s_ppu_clk_enable = '1' then
+				s_ciram_ce_n_d <= i_ciram_ce_n;
+			end if;
+		end if;
+	end process;
 	
 	s_eff_write_enable <= s_dma_write_enable when s_dma_active = '1' else s_mem_write_enable;
 	s_eff_addr <= s_dma_addr when s_dma_active = '1' else s_mem_addr;
 	s_eff_data <= s_dma_data when s_dma_active = '1' else s_mem_data;
+	
+	s_int_n <= s_apu_int_n and i_irq_n;
+	s_chr_latch <= i_chr_q when s_chr_read_enable = '1' else s_chr_latch;
+	s_chr_q <= s_video_q when s_ciram_ce_n_d = '0' else s_chr_latch;
 				  
 	o_cpu_clk_enable <= s_cpu_clk_enable;
-
+	o_cpu_phi2 <= s_sync;
+	o_vga_clk_enable <= s_ppu_clk_enable;
+	o_chr_addr <= s_chr_addr;
+	o_chr_data <= s_chr_data;
+	o_chr_read_enable <= s_chr_read_enable;
+	o_chr_write_enable <= s_chr_write_enable;
+	
 end;
 
+/********************************************************/
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+use ieee.numeric_std.all;
+use work.common.all;
+
+entity nestest is
+	port
+	(
+		i_clk : in std_logic;
+		i_reset_n : in std_logic := '1'
+	);
+end nestest;
+
+architecture behavioral of nestest is
+	component nescore is
+		port
+		(
+			i_clk : in std_logic;
+			i_reset_n : in std_logic := '1';
+			i_ctrl_a_data : in std_logic := '1';
+			i_ctrl_b_data : in std_logic := '1';
+			i_video_mode : in video_mode_t := ntsc;
+			i_ciram_ce_n : in std_logic := '1';
+			i_ciram_a10 : in std_logic := '0';
+			i_prg_q : in std_logic_vector(7 downto 0);
+			i_chr_q : in std_logic_vector(7 downto 0);
+			i_irq_n : in std_logic := '1';
+			o_prg_addr : out std_logic_vector(14 downto 0);
+			o_prg_data : out std_logic_vector(7 downto 0);
+			o_prg_write_enable : out std_logic;
+			o_prg_cs_n : out std_logic;
+			o_chr_addr : out std_logic_vector(13 downto 0);
+			o_chr_data : out std_logic_vector(7 downto 0);
+			o_chr_read_enable : out std_logic;
+			o_chr_write_enable : out std_logic;
+			o_ctrl_strobe : out std_logic;
+			o_ctrl_a_clk : out std_logic;
+			o_ctrl_b_clk : out std_logic;
+			o_cpu_clk_enable : out std_logic;
+			o_cpu_phi2 : out std_logic;
+			o_vga_addr : out std_logic_vector(15 downto 0);
+			o_vga_data : out std_logic_vector(5 downto 0);
+			o_vga_write_enable : out std_logic;
+			o_vga_clk_enable : out std_logic;
+			o_audio_q : out std_logic_vector(15 downto 0)
+		);
+	end component;
+	component progmem is
+		port
+		(
+			address : in std_logic_vector(14 downto 0);
+			clken : in std_logic := '1';
+			clock : in std_logic := '1';
+			q : out std_logic_vector(7 downto 0)
+		);
+	end component;
+	component videorom is
+		port
+		(
+			address : in std_logic_vector(12 downto 0);
+			clken : in std_logic := '1';
+			clock : in std_logic := '1';
+			data : in std_logic_vector(7 downto 0);
+			rden : in std_logic := '0';
+			wren : in std_logic := '0';
+			q : out std_logic_vector(7 downto 0)
+		);
+	end component;
+	
+	signal s_prg_addr : std_logic_vector(14 downto 0);
+	signal s_prg_q : std_logic_vector(7 downto 0);
+--	signal s_prg_data : std_logic_vector(7 downto 0);
+	signal s_prg_write_enable : std_logic;
+	signal s_prg_eff_q : std_logic_vector(7 downto 0);
+	signal s_prg_cs_n : std_logic;
+	signal s_chr_addr : std_logic_vector(13 downto 0);
+	signal s_chr_data : std_logic_vector(7 downto 0);
+	signal s_chr_read_enable : std_logic;
+	signal s_chr_write_enable : std_logic;
+	signal s_ppu_clk_enable : std_logic;
+	signal s_chr_q : std_logic_vector(7 downto 0);
+
+begin
+
+	nes_core : nescore port map
+	(
+		i_clk => i_clk,
+		i_reset_n => i_reset_n,
+		i_prg_q => s_prg_eff_q,
+		i_chr_q => s_chr_q,
+		i_ciram_ce_n => not s_chr_addr(13),
+		i_ciram_a10 => s_chr_addr(10),
+		o_prg_addr => s_prg_addr,
+--		o_prg_data => s_prg_data,
+		o_prg_write_enable => s_prg_write_enable,
+		o_prg_cs_n => s_prg_cs_n,
+		o_chr_addr => s_chr_addr,
+		o_chr_data => s_chr_data,
+		o_chr_read_enable => s_chr_read_enable,
+		o_chr_write_enable => s_chr_write_enable,
+		o_vga_clk_enable => s_ppu_clk_enable
+	);
+	prgrom : progmem port map
+	(
+		address => s_prg_addr,
+		clken => not s_prg_cs_n,
+		clock => i_clk,
+		q => s_prg_q
+	);
+	vrom: videorom port map
+	(
+		address => s_chr_addr(12 downto 0),
+		clken => '1',
+		clock => i_clk,
+		data => s_chr_data,
+		rden => s_chr_read_enable,
+		wren => s_chr_write_enable,
+		q => s_chr_q
+	);
+	
+	s_prg_eff_q <= s_prg_q when s_prg_cs_n = '0' else (others => '1');
+
+end;

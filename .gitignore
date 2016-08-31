@@ -12,3 +12,5 @@ c5_pin_model_dump.txt
 test_modules/
 nes.map
 *.hex
+nes_description.txt
+output_file.map

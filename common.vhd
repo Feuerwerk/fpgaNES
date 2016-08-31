@@ -43,6 +43,8 @@ package common is
 	type ctrl_op_t is (nop, alc, bcc, bcs, beq, bne, bmi, bpl, bvc, bvs, don);
 	type flags_op_t is (nop, din, nz, nzc, nzv, nvzc, clc, cli, clv, cld, stc, sed, sei);
 	type alu_inp_t is (din, val, arg, xrg, yrg, srg, one, pcl, pch, aci, alq, auc, brk, rst, nmi);
+	
+	type video_mode_t is (ntsc, pal);
 
 	-- Constants
 	constant N_FLAG : integer := 7;
