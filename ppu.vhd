@@ -96,102 +96,6 @@ begin
 end architecture;
 
 /*****************************************************************/
-/*
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.std_logic_unsigned.all;
-use ieee.numeric_std.all;
-
-entity ppumem is
-	port
-	(
-		i_clk : in std_logic;
-		i_clk_enable : in std_logic := '1';
-		i_addr : in std_logic_vector(15 downto 0);
-		i_data : in std_logic_vector(7 downto 0);
-		i_write_enable : in std_logic;
-		o_q : out std_logic_vector(7 downto 0)
-	);
-end ppumem;
-
-architecture behavioral of ppumem is
-	component videorom is
-		port
-		(
-			address : in std_logic_vector(12 downto 0);
-			clken : in std_logic := '1';
-			clock : in std_logic := '1';
-			data : in std_logic_vector(7 downto 0);
-			wren : in std_logic := '0';
-			q : out std_logic_vector(7 downto 0)
-		);
-	end component;
-	component videomem is
-		port
-		(
-			address : in std_logic_vector(10 downto 0);
-			clken : in std_logic := '1';
-			clock : in std_logic := '1';
-			data : in std_logic_vector(7 downto 0);
-			wren : in std_logic := '0';
-			q : out std_logic_vector(7 downto 0)
-		);
-	end component;
-	
-	type addr_type_t is (nop, ram, rom);
-	
-	signal s_ram_q : std_logic_vector(7 downto 0);
-	signal s_rom_q : std_logic_vector(7 downto 0);
-	signal s_ram_write_enable : std_logic := '0';
-	signal s_rom_write_enable : std_logic := '0';
-	signal s_addr_type : addr_type_t;
-	signal s_addr_type_d : addr_type_t := nop;
-
-begin
-	vrom: videorom port map
-	(
-		address => i_addr(12 downto 0),
-		clken => i_clk_enable,
-		clock => i_clk,
-		data => i_data,
-		wren => s_rom_write_enable,
-		q => s_rom_q
-	);
-	vram: videomem port map
-	(
-		address => i_addr(10 downto 0),
-		clken => i_clk_enable,
-		clock => i_clk,
-		data => i_data,
-		wren => s_ram_write_enable,
-		q => s_ram_q
-	);
-
-	process (i_clk)
-	begin
-		if rising_edge(i_clk) then
-			if i_clk_enable = '1' then
-				s_addr_type_d <= s_addr_type;
-			end if;
-		end if;
-	end process;
-	
-	s_ram_write_enable <= i_write_enable when s_addr_type = ram else '0';
-	s_rom_write_enable <= i_write_enable when s_addr_type = rom else '0';
-
-	s_addr_type <= rom when i_addr(15 downto 13) = "000"
-					else ram when i_addr(15 downto 13) = "001"
-					else nop;
-	
-	with s_addr_type_d select o_q <=
-		s_rom_q when rom,
-		s_ram_q when ram,
-		x"--" when others;
-	
-end architecture;
-*/
-
-/*****************************************************************/
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -209,6 +113,7 @@ entity ppu is
 		i_write_enable : in std_logic := '0';
 		i_cs_n : in std_logic := '0';
 		i_video_mode : in video_mode_t := ntsc;
+		i_mode_change : in std_logic := '0';
 		i_chr_data : in std_logic_vector(7 downto 0) := x"00";
 		o_q : out std_logic_vector(7 downto 0);
 		o_int_n : out std_logic;
@@ -240,19 +145,6 @@ architecture behavioral of ppu is
 			o_q : out std_logic_vector(7 downto 0)
 		);
 	end component;
-	/*
-	component ppumem is
-		port
-		(
-			i_clk : in std_logic;
-			i_clk_enable : in std_logic := '1';
-			i_addr : in std_logic_vector(15 downto 0);
-			i_data : in std_logic_vector(7 downto 0);
-			i_write_enable : in std_logic;
-			o_q : out std_logic_vector(7 downto 0)
-		);
-	end component;
-	*/
 	component spritemem is
 		port
 		(
@@ -364,6 +256,7 @@ architecture behavioral of ppu is
 	signal s_spr_cnt : integer range 0 to 8 := 0;
 	signal s_next_spr_idx : integer range 0 to 8 := 0;
 	signal s_spr_idx : integer range 0 to 7 := 0;
+	signal s_spr_fill : integer range -1 to 7 := -1;
 	signal s_soa_addr : std_logic_vector(4 downto 0) := (others => '0');
 	signal s_soa_data : std_logic_vector(7 downto 0) := (others => '0');
 	signal s_soa_q : std_logic_vector(7 downto 0) := (others => '0');
@@ -413,7 +306,7 @@ architecture behavioral of ppu is
 	signal s_hblank_cycle : boolean;
 	signal s_first_col_n : boolean;
 	signal s_clk_divider : natural := 0;
-	signal s_divider : natural := 0;
+	signal s_divider : natural;
 	signal s_vram_bkg_inc : boolean;
 	signal s_frame_latch : boolean := true;
 	signal s_enable_rendering : boolean;
@@ -421,17 +314,6 @@ architecture behavioral of ppu is
 	signal s_greyscale : std_logic := '0';
 
 begin
-/*
-	mem: ppumem port map
-	(
-		i_clk => i_clk,
-		i_clk_enable => s_clk_enable,
-		i_addr => s_video_addr,
-		i_data => s_io_data,
-		i_write_enable => s_video_write_enable,
-		o_q => s_video_data
-	);
-	*/
 	oamem: spritemem port map
 	(
 		clock => i_clk,
@@ -519,6 +401,8 @@ begin
 	begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
+				s_clk_divider <= 0;
+			elsif i_mode_change = '1' then
 				s_clk_divider <= 0;
 			elsif s_clk_divider = s_divider - 1 then
 				s_clk_divider <= 0;
@@ -970,11 +854,11 @@ begin
 							s_bkg_read_enable <= '1';
 							
 						when nt2 =>
-							s_tile_index <= i_chr_data;
 							s_bkg_addr <= s_attr_addr;
 							s_bkg_state <= at1;
 							
 						when at1 => -- Attribute Table
+							s_tile_index <= i_chr_data;
 							s_bkg_state <= at2;
 							s_bkg_read_enable <= '1';
 							
@@ -982,25 +866,6 @@ begin
 							if s_cycle /= 340 then
 								s_bkg_state <= tl1;
 								s_bkg_addr <= s_tile_lo_addr;
-									
-								case s_palette_quadrant is
-								
-									when "00" =>
-										s_new_background_palette_index <= i_chr_data(1 downto 0);
-										
-									when "01" =>
-										s_new_background_palette_index <= i_chr_data(3 downto 2);
-										
-									when "10" =>
-										s_new_background_palette_index <= i_chr_data(5 downto 4);
-										
-									when "11" =>
-										s_new_background_palette_index <= i_chr_data(7 downto 6);
-										
-									when others =>
-										s_new_background_palette_index <= "00";
-										
-								end case;
 							elsif s_shortcut_state then
 								s_bkg_state <= nt1;
 								s_bkg_addr <= s_tile_addr;
@@ -1012,14 +877,33 @@ begin
 							s_bkg_state <= tl2;
 							s_bkg_read_enable <= '1';
 							
+							case s_palette_quadrant is
+							
+								when "00" =>
+									s_new_background_palette_index <= i_chr_data(1 downto 0);
+									
+								when "01" =>
+									s_new_background_palette_index <= i_chr_data(3 downto 2);
+									
+								when "10" =>
+									s_new_background_palette_index <= i_chr_data(5 downto 4);
+									
+								when "11" =>
+									s_new_background_palette_index <= i_chr_data(7 downto 6);
+									
+								when others =>
+									s_new_background_palette_index <= "00";
+									
+							end case;
+							
 						when tl2 =>
 							s_bkg_state <= th1;
-							s_tl_data <= i_chr_data;
 							s_bkg_addr <= s_tile_hi_addr;
 							
 						when th1 => -- Tile high
 							s_bkg_state <= th2;
 							s_bkg_read_enable <= '1';
+							s_tl_data <= i_chr_data;
 							
 						when th2 =>
 							s_shifter_load <= '1';
@@ -1044,6 +928,7 @@ begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				s_spr_read_enable <= '0';
+				s_spr_fill <= -1;
 			
 				if i_reset_n = '0' then
 					s_spr_state <= idle;
@@ -1051,6 +936,11 @@ begin
 					s_soa_write_enable <= '0';
 					s_oam_addr <= x"00";
 				else
+					if s_spr_fill /= -1 then
+						s_sprites(s_spr_fill).tile_high <= s_tile_data;
+						s_sprites(s_spr_fill).enabled <= '1';
+					end if;
+				
 					s_soa_write_enable <= s_oam_soa_transfer;
 					s_oam_soa_transfer <= '0';
 					s_soa_data <= s_oam_q;
@@ -1207,18 +1097,17 @@ begin
 							s_spr_read_enable <= '1';
 							
 						when ftl2 =>
-							s_sprites(s_spr_idx).tile_low <= s_tile_data;
 							s_spr_addr(3) <= '1'; -- +8 Bytes
 							s_spr_state <= fth1;
 							
 						when fth1 =>
+							s_sprites(s_spr_idx).tile_low <= s_tile_data;
 							s_oam_addr <= x"00";
 							s_spr_state <= fth2;
 							s_spr_read_enable <= '1';
 							
 						when fth2 =>
-							s_sprites(s_spr_idx).tile_high <= s_tile_data;
-							s_sprites(s_spr_idx).enabled <= '1';
+							s_spr_fill <= s_spr_idx;
 						
 							if s_next_spr_idx = 8 then
 								s_spr_state <= wait2;
@@ -1385,7 +1274,7 @@ begin
 	s_background_palette_index <= s_bh_q(s_fine_scroll_x) & s_bl_q(s_fine_scroll_x);
 	s_palette_color <= s_palette_mem(to_pal_idx(s_palette_index))(5 downto 0);
 	s_palette_access <= s_vram_addr_v(14 downto 8) = 7x"3f";
-	s_clk_enable <= '1' when s_clk_divider = 0 else '0';
+	s_clk_enable <= '1' when s_clk_divider = s_divider - 1 else '0';
 	
 	o_phi0 <= s_clk_enable;
 	o_q <= s_q;

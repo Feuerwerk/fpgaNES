@@ -10,7 +10,7 @@ entity master_ctrl is
 		i_clk : in std_logic;
 		i_reset_n : in std_logic := '1';
 		i_video_mode : in video_mode_t;
-		i_enable : in std_logic;
+		i_mode_change : in std_logic;
 		i_reconfig_data : in std_logic_vector(31 downto 0) := (others => '0');
 		o_reconfig_read : out std_logic;
 		o_reconfig_write : out std_logic;
@@ -47,8 +47,7 @@ begin
 				s_reconfig_addr <= (others => '0');
 				s_reconfig_new_data <= (others => '0');
 			else
-			
-				s_enable_d <= s_enable_d(1 downto 0) & i_enable;
+				s_enable_d <= s_enable_d(1 downto 0) & i_mode_change;
 				
 				case s_state is
 				
@@ -210,7 +209,7 @@ begin
 	process (i_video_mode)
 	begin
 		case i_video_mode is
-		
+
 			when ntsc =>
 				s_m_counter <= 18x"25F5E";
 				s_n_counter <= 18x"0505";

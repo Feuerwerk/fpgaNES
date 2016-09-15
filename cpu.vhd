@@ -769,6 +769,7 @@ entity cpu is
 		i_nmi_n : in std_logic := '1';
 		i_mem_q : in std_logic_vector(7 downto 0) := x"00";
 		i_video_mode : in video_mode_t;
+		i_mode_change : in std_logic := '0';
 		o_mem_addr : out std_logic_vector(15 downto 0);
 		o_mem_data : out std_logic_vector(7 downto 0);
 		o_mem_write_enable : out std_logic;
@@ -940,6 +941,8 @@ begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_clk_divider <= 0;
+			elsif i_mode_change = '1' then
+				s_clk_divider <= 0;
 			elsif s_clk_divider = s_divider - 1 then
 				s_clk_divider <= 0;
 			else
@@ -953,12 +956,40 @@ begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_sync_clk <= '0';
-			elsif s_clk_divider = 10 then
-				s_sync_clk <= '0';
-			elsif s_clk_divider = 2 then
-				s_sync_clk <= '1';
+			else
+				case i_video_mode is
+				
+					when ntsc =>
+						if s_clk_divider = 11 then
+							s_sync_clk <= '0';
+						elsif s_clk_divider = 3 then
+							s_sync_clk <= '1';
+						end if;
+						
+					when pal =>
+						if s_clk_divider = 12 then
+							s_sync_clk <= '0';
+						elsif s_clk_divider = 2 then
+							s_sync_clk <= '1';
+						end if;
+
+				end case;
 			end if;
 		end if;
+	end process;
+	
+	process (i_video_mode)
+	begin
+		case i_video_mode is
+		
+			when ntsc =>
+				-- s_sync_edge <= not i_clk when s_clk_divider = 4 else '1';
+				s_sync_edge <= '1';
+				
+			when pal =>
+				s_sync_edge <= '1';
+			
+		end case;
 	end process;
 	
 	s_internal_clk <= '1' when s_clk_divider = s_divider - 1 else '0';
@@ -1515,7 +1546,6 @@ begin
 	o_mem_data <= s_mem_data;
 	o_mem_write_enable <= s_mem_write_enable;
 
-	s_sync_edge <= i_clk when s_clk_divider = 10 else '1';
 	o_phi0 <= s_internal_clk;
 	o_phi2 <= s_sync_clk and s_sync_edge;
 
