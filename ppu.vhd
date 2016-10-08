@@ -107,13 +107,12 @@ entity ppu is
 	port
 	(
 		i_clk : in std_logic;
+		i_clk_enable : in std_logic := '1';
 		i_reset_n : in std_logic := '1';
 		i_addr : in std_logic_vector(2 downto 0) := "000";
 		i_data : in std_logic_vector(7 downto 0) := x"00";
 		i_write_enable : in std_logic := '0';
 		i_cs_n : in std_logic := '0';
-		i_video_mode : in video_mode_t := ntsc;
-		i_mode_change : in std_logic := '0';
 		i_chr_data : in std_logic_vector(7 downto 0) := x"00";
 		o_q : out std_logic_vector(7 downto 0);
 		o_int_n : out std_logic;
@@ -123,8 +122,7 @@ entity ppu is
 		o_chr_addr : out std_logic_vector(13 downto 0);
 		o_chr_read_enable : out std_logic;
 		o_chr_write_enable : out std_logic;
-		o_chr_q : out std_logic_vector(7 downto 0);
-		o_phi0 : out std_logic
+		o_chr_q : out std_logic_vector(7 downto 0)
 	);
 end ppu;
 
@@ -298,15 +296,12 @@ architecture behavioral of ppu is
 	signal s_vram_addr_t : std_logic_vector(14 downto 0) := 15x"0000";
 	signal s_vram_addr_v : std_logic_vector(14 downto 0) := 15x"0000";
 	signal s_fine_scroll_x : integer range 0 to 7 := 0;
-	signal s_clk_enable : std_logic;
 	signal s_palette_access : boolean;
 	signal s_palette_index : std_logic_vector(4 downto 0);
 	signal s_palette_quadrant : std_logic_vector(1 downto 0);
 	signal s_palette_mem : byte_array_t := ( x"09", x"01", x"00", x"01", x"00", x"02", x"02", x"0D", x"08", x"10", x"08", x"24", x"00", x"00", x"04", x"2C", x"09", x"01", x"34", x"03", x"00", x"04", x"00", x"14", x"08", x"3A", x"00", x"02", x"00", x"20", x"2C", x"08" );
 	signal s_hblank_cycle : boolean;
 	signal s_first_col_n : boolean;
-	signal s_clk_divider : natural := 0;
-	signal s_divider : natural;
 	signal s_vram_bkg_inc : boolean;
 	signal s_frame_latch : boolean := true;
 	signal s_enable_rendering : boolean;
@@ -317,7 +312,7 @@ begin
 	oamem: spritemem port map
 	(
 		clock => i_clk,
-		clken => s_clk_enable,
+		clken => i_clk_enable,
 		address => s_oam_addr,
 		data => s_io_data,
 		wren => s_oam_write_enable,
@@ -326,7 +321,7 @@ begin
 	soam: soamem port map
 	(
 		clock => i_clk,
-		clken => s_clk_enable,
+		clken => i_clk_enable,
 		address => s_soa_addr,
 		data => s_soa_data,
 		wren => s_soa_write_enable,
@@ -335,7 +330,7 @@ begin
 	tl_shifter: parallel_serial_shifter generic map (16, 8) port map
 	(
 		i_clk => i_clk,
-		i_clk_enable => s_clk_enable,
+		i_clk_enable => i_clk_enable,
 		i_load => s_shifter_load,
 		i_enable => s_shifter_enable,
 		i_data => s_tl_data,
@@ -344,7 +339,7 @@ begin
 	th_shifter: parallel_serial_shifter generic map (16, 8) port map
 	(
 		i_clk => i_clk,
-		i_clk_enable => s_clk_enable,
+		i_clk_enable => i_clk_enable,
 		i_load => s_shifter_load,
 		i_enable => s_shifter_enable,
 		i_data => i_chr_data,
@@ -353,7 +348,7 @@ begin
 	bl_shifter: parallel_serial_shifter generic map (16, 8) port map
 	(
 		i_clk => i_clk,
-		i_clk_enable => s_clk_enable,
+		i_clk_enable => i_clk_enable,
 		i_load => s_shifter_load,
 		i_enable => s_shifter_enable,
 		i_data => s_new_background_palette_index(0) & s_new_background_palette_index(0) & s_new_background_palette_index(0) & s_new_background_palette_index(0) & s_new_background_palette_index(0) & s_new_background_palette_index(0) & s_new_background_palette_index(0) & s_new_background_palette_index(0),
@@ -362,7 +357,7 @@ begin
 	bh_shifter: parallel_serial_shifter generic map (16, 8) port map
 	(
 		i_clk => i_clk,
-		i_clk_enable => s_clk_enable,
+		i_clk_enable => i_clk_enable,
 		i_load => s_shifter_load,
 		i_enable => s_shifter_enable,
 		i_data => s_new_background_palette_index(1) & s_new_background_palette_index(1) & s_new_background_palette_index(1) & s_new_background_palette_index(1) & s_new_background_palette_index(1) & s_new_background_palette_index(1) & s_new_background_palette_index(1) & s_new_background_palette_index(1),
@@ -382,42 +377,12 @@ begin
 		);
 	end generate;
 	
-	-- Clock Divider
-	
-	process (i_video_mode)
-	begin
-		case i_video_mode is
-		
-			when ntsc =>
-				s_divider <= 4;
-				
-			when pal =>
-				s_divider <= 5;
-			
-		end case;
-	end process;
-	
-	process (i_clk)
-	begin
-		if rising_edge(i_clk) then
-			if i_reset_n = '0' then
-				s_clk_divider <= 0;
-			elsif i_mode_change = '1' then
-				s_clk_divider <= 0;
-			elsif s_clk_divider = s_divider - 1 then
-				s_clk_divider <= 0;
-			else
-				s_clk_divider <= s_clk_divider + 1;
-			end if;
-		end if;
-	end process;
-	
 	-- IO
 
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_q <= x"00";
 					s_io_data <= x"00";
@@ -561,7 +526,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_line <= 261;
 					s_cycle <= 0;
@@ -593,7 +558,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_greyscale <= '0';
 				elsif s_io_state = ppumask then
@@ -606,7 +571,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_render_first_bkg_col <= '0';
 				elsif s_io_state = ppumask then
@@ -619,7 +584,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_render_first_spr_col <= '0';
 				elsif s_io_state = ppumask then
@@ -632,7 +597,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_enable_background <= '0';
 				elsif s_io_state = ppumask then
@@ -645,7 +610,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_enable_sprites <= '0';
 				elsif s_io_state = ppumask then
@@ -660,7 +625,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_vram_inc <= '0';
 				elsif s_io_state = ppuctrl then
@@ -673,7 +638,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_sprite_half <= '0';
 				elsif s_io_state = ppuctrl then
@@ -686,7 +651,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_background_half <= '0';
 				elsif s_io_state = ppuctrl then
@@ -699,7 +664,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_big_sprites <= '0';
 				elsif s_io_state = ppuctrl then
@@ -712,7 +677,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_enable_nmi <= '0';
 				elsif (s_io_state = ppuctrl) and (s_io_cycle = 1) then
@@ -727,7 +692,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_vram_addr_t <= 15x"0000";
 				elsif s_io_state = ppuaddr_hi then
@@ -750,7 +715,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_fine_scroll_x <= 0;
 				elsif s_io_state = ppuscroll_x then
@@ -763,7 +728,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_vram_addr_v <= 15x"0000";
 				elsif (s_io_state = ppuaddr_lo) and (s_io_cycle = 2) then
@@ -821,7 +786,7 @@ begin
 		variable index : integer range 0 to 31;
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if (s_io_state = ppudata_write) and s_palette_access and (s_io_cycle = 1) then
 					index := to_pal_idx(s_vram_addr_v(4 downto 0));
 					s_palette_mem(index) <= s_io_data;
@@ -836,7 +801,7 @@ begin
 		variable ypos : std_logic_vector(7 downto 0);
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				s_shifter_load <= '0';
 				s_bkg_read_enable <= '0';
 			
@@ -926,7 +891,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				s_spr_read_enable <= '0';
 				s_spr_fill <= -1;
 			
@@ -1152,7 +1117,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_vblank <= '0';
 				elsif (s_line = 261) and (s_cycle = 1) then
@@ -1171,7 +1136,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				s_sprite_0_trigger <= false;
 			
 				if i_reset_n = '0' then
@@ -1198,7 +1163,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
+			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_out_addr <= x"0000";
 				elsif not s_visible_line then
@@ -1274,9 +1239,7 @@ begin
 	s_background_palette_index <= s_bh_q(s_fine_scroll_x) & s_bl_q(s_fine_scroll_x);
 	s_palette_color <= s_palette_mem(to_pal_idx(s_palette_index))(5 downto 0);
 	s_palette_access <= s_vram_addr_v(14 downto 8) = 7x"3f";
-	s_clk_enable <= '1' when s_clk_divider = s_divider - 1 else '0';
 	
-	o_phi0 <= s_clk_enable;
 	o_q <= s_q;
 	o_int_n <= s_vblank nand s_enable_nmi;
 	o_vga_addr <= s_out_addr;
