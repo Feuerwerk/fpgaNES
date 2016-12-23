@@ -114,7 +114,7 @@ begin
 	o_ppu_cs_n <= not i_sync when s_addr_type = ppu else '1';
 	o_apu_cs_n <= not i_clk_enable when s_addr_type = apu else '1';
 	o_prg_cs_n <= s_sync_d nand i_addr(15);
-	o_prg_write_enable <= i_write_enable when s_addr_type = rom else '0';
+	o_prg_write_enable <= i_write_enable/* when s_addr_type = rom else '0'*/;
 	
 	process (i_clk)
 	begin

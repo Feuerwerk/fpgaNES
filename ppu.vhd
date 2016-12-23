@@ -109,6 +109,7 @@ entity ppu is
 		i_clk : in std_logic;
 		i_clk_enable : in std_logic := '1';
 		i_reset_n : in std_logic := '1';
+		i_video_mode : in video_mode_t := ntsc;
 		i_addr : in std_logic_vector(2 downto 0) := "000";
 		i_data : in std_logic_vector(7 downto 0) := x"00";
 		i_write_enable : in std_logic := '0';
@@ -117,7 +118,7 @@ entity ppu is
 		o_q : out std_logic_vector(7 downto 0);
 		o_int_n : out std_logic;
 		o_vga_addr : out std_logic_vector(15 downto 0);
-		o_vga_data : out std_logic_vector(5 downto 0);
+		o_vga_data : out std_logic_vector(8 downto 0);
 		o_vga_write_enable : out std_logic;
 		o_chr_addr : out std_logic_vector(13 downto 0);
 		o_chr_read_enable : out std_logic;
@@ -245,7 +246,8 @@ architecture behavioral of ppu is
 	signal s_bkg_state : background_state_t := idle;
 	signal s_spr_state : sprite_state_t := idle;
 	signal s_out_addr : std_logic_vector(15 downto 0) := x"0000";
-	signal s_out_data : std_logic_vector(5 downto 0) := "000000";
+	signal s_out_data : std_logic_vector(8 downto 0);
+	signal s_out_color : std_logic_vector(5 downto 0);
 	signal s_out_write_enable : std_logic := '0';
 	signal s_visible_line : boolean;
 	signal s_visible_or_prescan_line : boolean;
@@ -307,6 +309,7 @@ architecture behavioral of ppu is
 	signal s_enable_rendering : boolean;
 	signal s_shortcut_state : boolean;
 	signal s_greyscale : std_logic := '0';
+	signal s_color_emphasize : std_logic_vector(2 downto 0) := "000";
 
 begin
 	oamem: spritemem port map
@@ -615,6 +618,27 @@ begin
 					s_enable_sprites <= '0';
 				elsif s_io_state = ppumask then
 					s_enable_sprites <= s_io_data(4);
+				end if;
+			end if;
+		end if;
+	end process;
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_clk_enable = '1' then
+				if i_reset_n = '0' then
+					s_color_emphasize <= "000";
+				elsif s_io_state = ppumask then
+					case i_video_mode is
+					
+						when ntsc =>
+							s_color_emphasize <= s_io_data(7 downto 5);
+							
+						when pal =>
+							s_color_emphasize <= s_io_data(7) & s_io_data(5) & s_io_data(6);
+					
+					end case;
 				end if;
 			end if;
 		end if;
@@ -1222,7 +1246,8 @@ begin
 	s_visible_or_prescan_line <= s_visible_line or (s_line = 261);
 	s_hblank_cycle <= (s_cycle > 256) and (s_cycle < 321);
 	s_vram_bkg_inc <= std_logic_vector(to_unsigned(s_cycle - 1, 3)) = "110";
-	s_out_data <= s_palette_color and 6x"30" when s_greyscale = '1' else s_palette_color;
+	s_out_color <= s_palette_color and 6x"30" when s_greyscale = '1' else s_palette_color;
+	s_out_data <= s_color_emphasize & s_out_color;
 	s_oam_write_enable <= '1' when s_perform_oam_write_access else '0';
 	s_perform_oam_write_access <= (s_io_state = oamdata_write) and (s_io_cycle = 1);
 	s_perform_oam_access <= s_perform_oam_write_access;

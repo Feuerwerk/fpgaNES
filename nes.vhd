@@ -61,6 +61,7 @@ entity nes is
 		CIC_TOPAK : out std_logic;
 		CIC_RST_N : out std_logic;
 		CIC_TOMB : in std_logic;
+		GND1 : out std_logic;
 		HDMI_TX_CLK : out std_logic;
 		HDMI_TX_D : out std_logic_vector(23 downto 0);
 		HDMI_TX_DE : out std_logic;
@@ -138,7 +139,7 @@ architecture behavioral of nes is
 			o_cpu_clk_enable : out std_logic;
 			o_cpu_sync : out std_logic;
 			o_vga_addr : out std_logic_vector(15 downto 0);
-			o_vga_data : out std_logic_vector(5 downto 0);
+			o_vga_data : out std_logic_vector(8 downto 0);
 			o_vga_write_enable : out std_logic;
 			o_vga_clk_enable : out std_logic;
 			o_audio_q : out std_logic_vector(15 downto 0)
@@ -164,7 +165,7 @@ architecture behavioral of nes is
 			i_vga_clk_enable : in std_logic;
 			i_reset_n : in std_logic;
 			i_addr : in std_logic_vector(15 downto 0);
-			i_data : in std_logic_vector(5 downto 0);
+			i_data : in std_logic_vector(8 downto 0);
 			i_write_enable : in std_logic;
 			o_data_enable : out std_logic;
 			o_vsync : out std_logic;
@@ -272,12 +273,12 @@ architecture behavioral of nes is
 	signal s_audio_reset_n : std_logic;
 	signal s_vga_reset_n : std_logic;
 	signal s_vga_addr : std_logic_vector(15 downto 0);
-	signal s_vga_data : std_logic_vector(5 downto 0);
+	signal s_vga_data : std_logic_vector(8 downto 0);
 	signal s_vga_write_enable : std_logic;
 	signal s_vga_clk_enable : std_logic;
 	signal s_audio_q : std_logic_vector(15 downto 0);
-	signal s_debug1 : std_logic_vector(7 downto 0);
-	signal s_debug2 : std_logic_vector(7 downto 0);
+	signal s_debug1 : std_logic_vector(7 downto 0) := (others => '0');
+	signal s_debug2 : std_logic_vector(7 downto 0) := (others => '0');
 	signal s_audio_counter : integer range 0 to 62499 := 0;
 	signal s_ack_error : std_logic;
 	signal s_audio_lrclk : std_logic;
@@ -285,6 +286,8 @@ architecture behavioral of nes is
 	signal s_audio_dat : std_logic;
 	signal s_sample_req : std_logic_vector(1 downto 0);
 	signal s_cpu_clk_enable : std_logic;
+	signal s_cpu_sync : std_logic;
+	signal s_prg_cs_n : std_logic;
 	signal s_prg_addr : std_logic_vector(14 downto 0);
 	signal s_chr_addr : std_logic_vector(13 downto 0);
 	signal s_prg_data : std_logic_vector(7 downto 0);
@@ -307,6 +310,7 @@ architecture behavioral of nes is
 	signal s_ppu_addr : std_logic_vector(13 downto 0) := (others => '0');
 	signal s_clk_divider : natural range 0 to 4999 := 0;
 	signal s_clk_enable : std_logic;
+	-- signal s_gurke : std_logic := '0';
 
 begin
 	master : master_pll port map
@@ -372,7 +376,7 @@ begin
 		o_prg_addr => s_prg_addr,
 		o_prg_data => s_prg_data,
 		o_prg_write_enable => s_prg_write_enable,
-		o_prg_cs_n => ROMSEL_N,
+		o_prg_cs_n => s_prg_cs_n,
 		o_chr_addr => s_chr_addr,
 		o_chr_data => s_chr_data,
 		o_chr_read_enable => s_chr_read_enable,
@@ -381,7 +385,7 @@ begin
 		o_ctrl_a_clk => CTRL_A_CLOCK,
 		o_ctrl_b_clk => CTRL_B_CLOCK,
 		o_cpu_clk_enable => s_cpu_clk_enable,
-		o_cpu_sync => M2,
+		o_cpu_sync => s_cpu_sync,
 		o_vga_addr => s_vga_addr,
 		o_vga_data => s_vga_data,
 		o_vga_write_enable => s_vga_write_enable,
@@ -515,6 +519,10 @@ begin
 	CIC_CLK <= '0';
 	CIC_TOPAK <= '0';
 	CIC_RST_N <= '1';
+	SYS_CLK <= '0'; -- s_master_clk
+	M2 <= '0'; --s_cpu_sync
+	GND1 <= '0';
+	
 	CPU_ADDR <= s_prg_addr;
 	CPU_DATA <= s_prg_data when s_prg_write_enable = '1' else (others => 'Z');
 	CPU_DIR <= s_prg_write_enable;
@@ -525,27 +533,129 @@ begin
 	PPU_RD_N <= not s_chr_read_enable;
 	PPU_WR_N <= not s_chr_write_enable;
 	PPU_A13_N <= not s_chr_addr(13);
-	SYS_CLK <= s_master_clk;
+	
 	s_video_mode <= ntsc when SW(9) = '0' else pal;
 	
+
+/*	
+	process (all)
+	begin
+		if SW(7) = '0' then
+			CPU_DATA <= (others => 'Z');
+			CPU_DIR <= '0';
+			CPU_RW <= '1';
+		elsif s_prg_write_enable = '1' then
+			CPU_DATA <= s_prg_data;
+			CPU_DIR <= '1';
+			CPU_RW <= '0';
+		else
+			CPU_DATA <= (others => 'Z');
+			CPU_DIR <= '0';
+			CPU_RW <= '1';
+		end if;
+	end process;
+	*/
+
 	/*
 	process (s_master_clk)
 	begin
 		if rising_edge(s_master_clk) then
 			if KEY(0) = '0' and s_key_d(0) = '1' then
-				s_cpu_addr <= s_cpu_addr + 16x"1";
+				s_debug1 <= s_debug1 + x"01";
 			end if;
 			
 			if KEY(1) = '0' and s_key_d(1) = '1' then
-				s_cpu_addr <= s_cpu_addr - 16x"1";
+				s_debug1 <= s_debug1 - x"01";
+			end if;
+			
+			s_key_d <= KEY;
+		end if;
+	end process;
+
+	process (s_master_clk)
+	begin
+		if rising_edge(s_master_clk) then
+			if s_cpu_clk_enable = '1' then
+				s_gurke <= not s_gurke;
+			end if;
+		end if;
+	end process;
+
+	process (all)
+	begin
+		case s_debug1 is
+				
+			when x"01" =>
+				ROMSEL_N <= not s_cpu_sync;
+				CPU_ADDR <= (others => s_gurke);
+				CPU_DATA <= (others => '0');
+				CPU_DIR <= '1';
+				CPU_RW <= '0';
+				
+			when x"02" =>
+				ROMSEL_N <= '1';
+				CPU_ADDR <= (others => s_gurke);
+				CPU_DATA <= (others => '0');
+				CPU_DIR <= '1';
+				CPU_RW <= '0';
+				
+			when x"03" =>
+				ROMSEL_N <= not s_cpu_sync;
+				CPU_ADDR <= (others => '0');
+				CPU_DATA <= (others => s_gurke);
+				CPU_DIR <= '1';
+				CPU_RW <= '0';
+				
+			when x"04" =>
+				ROMSEL_N <= '1';
+				CPU_ADDR <= (others => '0');
+				CPU_DATA <= (others => s_gurke);
+				CPU_DIR <= '1';
+				CPU_RW <= '0';
+				
+			when x"05" =>
+				ROMSEL_N <= not s_cpu_sync;
+				
+				if s_gurke = '1' then
+					CPU_ADDR <= 15x"24F5";
+				else
+					CPU_ADDR <= 15x"24F6";
+				end if;
+				
+				CPU_DATA <= (others => 'Z');
+				CPU_DIR <= '0';
+				CPU_RW <= '1';
+				
+			when others =>
+				CPU_ADDR <= s_prg_addr;
+				ROMSEL_N <= s_prg_cs_n;
+			
+				if s_prg_write_enable = '1' then
+					CPU_DATA <= s_prg_data;
+					CPU_DIR <= '1';
+					CPU_RW <= '0';
+				else
+					CPU_DATA <= (others => 'Z');
+					CPU_DIR <= '0';
+					CPU_RW <= '1';
+				end if;
+		
+		end case;
+	end process;
+	
+	process (s_master_clk)
+	begin
+		if rising_edge(s_master_clk) then
+			if KEY(0) = '0' and s_key_d(0) = '1' then
+				s_cpu_addr <= s_cpu_addr(14 downto 0) & '0';
+			end if;
+			
+			if KEY(1) = '0' and s_key_d(1) = '1' then
+				s_cpu_addr <= '0' & s_cpu_addr(15 downto 1);
 			end if;
 			
 			if KEY(2) = '0' and s_key_d(2) = '1' then
-				s_cpu_addr <= s_cpu_addr + 16x"100";
-			end if;
-			
-			if KEY(3) = '0' and s_key_d(3) = '1' then
-				s_cpu_addr <= s_cpu_addr - 16x"100";
+				s_cpu_addr <= 16x"0001";
 			end if;
 			
 			s_key_d <= KEY;
@@ -557,27 +667,24 @@ begin
 	CPU_DIR <= '0';
 	CPU_RW <= '1';
 	ROMSEL_N <= SW(7);
-	*/
+	LEDG <= (others => '0');
+	LEDR(7 downto 0) <= '0' & s_cpu_addr(14 downto 8);
+	s_debug2 <= CPU_DATA;
+	s_debug1 <= s_cpu_addr(7 downto 0);
 
-
-	/*
 	process (s_master_clk)
 	begin
 		if rising_edge(s_master_clk) then
 			if KEY(0) = '0' and s_key_d(0) = '1' then
-				s_ppu_addr <= s_ppu_addr + 14x"1";
+				s_ppu_addr <= s_ppu_addr(12 downto 0) & '0';
 			end if;
 			
 			if KEY(1) = '0' and s_key_d(1) = '1' then
-				s_ppu_addr <= s_ppu_addr - 14x"1";
+				s_ppu_addr <= '0' & s_ppu_addr(13 downto 1);
 			end if;
 			
 			if KEY(2) = '0' and s_key_d(2) = '1' then
-				s_ppu_addr <= s_ppu_addr + 14x"100";
-			end if;
-			
-			if KEY(3) = '0' and s_key_d(3) = '1' then
-				s_ppu_addr <= s_ppu_addr - 14x"100";
+				s_ppu_addr <= 14x"0001";
 			end if;
 			
 			s_key_d <= KEY;
@@ -595,6 +702,7 @@ begin
 	LEDR(7 downto 0) <= "00" & s_ppu_addr(13 downto 8);
 	s_debug2 <= PPU_DATA;
 	s_debug1 <= s_ppu_addr(7 downto 0);
+	
 	*/
 	
 end;
@@ -637,7 +745,7 @@ entity nescore is
 		o_cpu_clk_enable : out std_logic;
 		o_cpu_sync : out std_logic;
 		o_vga_addr : out std_logic_vector(15 downto 0);
-		o_vga_data : out std_logic_vector(5 downto 0);
+		o_vga_data : out std_logic_vector(8 downto 0);
 		o_vga_write_enable : out std_logic;
 		o_vga_clk_enable : out std_logic;
 		o_audio_q : out std_logic_vector(15 downto 0)
@@ -666,6 +774,7 @@ architecture behavioral of nescore is
 			i_clk: in std_logic;
 			i_clk_enable : in std_logic := '1';
 			i_reset_n: in std_logic := '1';
+			i_video_mode : in video_mode_t := ntsc;
 			i_addr : in std_logic_vector(2 downto 0) := "000";
 			i_data : in std_logic_vector(7 downto 0) := x"00";
 			i_write_enable : in std_logic := '0';
@@ -674,7 +783,7 @@ architecture behavioral of nescore is
 			o_q : out std_logic_vector(7 downto 0);
 			o_int_n : out std_logic;
 			o_vga_addr: out std_logic_vector(15 downto 0);
-			o_vga_data: out std_logic_vector(5 downto 0);
+			o_vga_data: out std_logic_vector(8 downto 0);
 			o_vga_write_enable: out std_logic;
 			o_chr_addr : out std_logic_vector(13 downto 0);
 			o_chr_read_enable : out std_logic;
@@ -809,6 +918,7 @@ begin
 		i_clk => i_clk,
 		i_clk_enable => s_ppu_clk_enable,
 		i_reset_n => i_reset_n,
+		i_video_mode => i_video_mode,
 		i_addr => s_ppu_addr,
 		i_data => s_eff_data,
 		i_write_enable => s_eff_write_enable,
