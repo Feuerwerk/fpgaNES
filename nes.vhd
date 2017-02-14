@@ -523,6 +523,7 @@ begin
 	M2 <= '0'; --s_cpu_sync
 	GND1 <= '0';
 	
+	ROMSEL_N <= s_prg_cs_n;
 	CPU_ADDR <= s_prg_addr;
 	CPU_DATA <= s_prg_data when s_prg_write_enable = '1' else (others => 'Z');
 	CPU_DIR <= s_prg_write_enable;

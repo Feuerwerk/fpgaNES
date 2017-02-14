@@ -1,5 +1,5 @@
 
-# (C) 2001-2016 Altera Corporation. All rights reserved.
+# (C) 2001-2017 Altera Corporation. All rights reserved.
 # Your use of Altera Corporation's design tools, logic functions and 
 # other software and tools, and its AMPP partner logic functions, and 
 # any output files any of the foregoing (including device programming 
@@ -12,7 +12,7 @@
 # or its authorized distributors. Please refer to the applicable 
 # agreement for further details.
 
-# ACDS 16.0 218 win32 2016.07.18.11:36:15
+# ACDS 16.1 203 win32 2017.02.06.18:16:12
 # ----------------------------------------
 # Auto-generated simulation script rivierapro_setup.tcl
 # ----------------------------------------
@@ -111,7 +111,7 @@ if ![info exists QSYS_SIMDIR] {
 }
 
 if ![info exists QUARTUS_INSTALL_DIR] { 
-  set QUARTUS_INSTALL_DIR "C:/altera/16.0/quartus/"
+  set QUARTUS_INSTALL_DIR "C:/altera/16.1/quartus/"
 }
 
 if ![info exists USER_DEFINED_COMPILE_OPTIONS] { 

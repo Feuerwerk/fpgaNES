@@ -4,7 +4,8 @@
 			BYTEENABLE_WIDTH    : integer := 4;
 			RECONFIG_ADDR_WIDTH : integer := 6;
 			RECONFIG_DATA_WIDTH : integer := 32;
-			reconf_width        : integer := 64
+			reconf_width        : integer := 64;
+			WAIT_FOR_LOCK       : boolean := true
 		);
 		port (
 			mgmt_clk          : in  std_logic                     := 'X';             -- clk

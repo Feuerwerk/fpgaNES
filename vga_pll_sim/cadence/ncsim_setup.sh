@@ -1,5 +1,5 @@
 
-# (C) 2001-2016 Altera Corporation. All rights reserved.
+# (C) 2001-2017 Altera Corporation. All rights reserved.
 # Your use of Altera Corporation's design tools, logic functions and 
 # other software and tools, and its AMPP partner logic functions, and 
 # any output files any of the foregoing (including device programming 
@@ -12,7 +12,7 @@
 # or its authorized distributors. Please refer to the applicable 
 # agreement for further details.
 
-# ACDS 16.0 218 win32 2016.07.18.11:36:39
+# ACDS 16.1 203 win32 2017.02.06.18:16:39
 
 # ----------------------------------------
 # ncsim - auto-generated simulation script
@@ -101,12 +101,12 @@
 # within the Quartus project, and generate a unified
 # script which supports all the Altera IP within the design.
 # ----------------------------------------
-# ACDS 16.0 218 win32 2016.07.18.11:36:39
+# ACDS 16.1 203 win32 2017.02.06.18:16:39
 # ----------------------------------------
 # initialize variables
 TOP_LEVEL_NAME="vga_pll"
 QSYS_SIMDIR="./../"
-QUARTUS_INSTALL_DIR="C:/altera/16.0/quartus/"
+QUARTUS_INSTALL_DIR="C:/altera/16.1/quartus/"
 SKIP_FILE_COPY=0
 SKIP_DEV_COM=0
 SKIP_COM=0
@@ -182,6 +182,7 @@ fi
 # ----------------------------------------
 # elaborate top level design
 if [ $SKIP_ELAB -eq 0 ]; then
+  export GENERIC_PARAM_COMPAT_CHECK=1
   ncelab -access +w+r+c -namemap_mixgen -relax $ELAB_OPTIONS $USER_DEFINED_ELAB_OPTIONS $TOP_LEVEL_NAME
 fi
 

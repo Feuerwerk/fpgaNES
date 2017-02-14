@@ -8,6 +8,10 @@
    path="master_reconfig_sim/altera_pll_reconfig/altera_pll_reconfig_core.v"
    type="VERILOG"
    library="master_reconfig" />
+ <file
+   path="master_reconfig_sim/altera_pll_reconfig/altera_std_synchronizer.v"
+   type="VERILOG"
+   library="master_reconfig" />
  <file path="master_reconfig_sim/master_reconfig.vhd" type="VHDL" />
  <topLevel name="master_reconfig" />
  <deviceFamily name="cyclonev" />
