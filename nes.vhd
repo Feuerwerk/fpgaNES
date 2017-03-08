@@ -306,10 +306,6 @@ architecture behavioral of nes is
 	signal s_video_mode_d : undef_video_mode_t := unk;
 	signal s_mode_change : std_logic := '0';
 	signal s_key_d : std_logic_vector(3 downto 0) := (others => '1');
-	signal s_cpu_addr : std_logic_vector(15 downto 0) := (others => '0');
-	signal s_ppu_addr : std_logic_vector(13 downto 0) := (others => '0');
-	signal s_clk_divider : natural range 0 to 4999 := 0;
-	signal s_clk_enable : std_logic;
 
 begin
 	master : master_pll port map
@@ -518,7 +514,7 @@ begin
 	CIC_CLK <= '0';
 	CIC_TOPAK <= '0';
 	CIC_RST_N <= '1';
-	SYS_CLK <= '0'; -- s_master_clk
+	SYS_CLK <= s_master_clk;
 	M2 <= s_cpu_sync;
 	GND <= (others => '0');
 	
@@ -823,17 +819,6 @@ begin
 		q => s_ciram_q
 	);
 	
-	process (i_clk)
-	begin
-		if rising_edge(i_clk) then
-			if i_reset_n = '0' then
-				s_prg_q <= (others => '0');
-			elsif s_cpu_clk_enable = '1' then
-				s_prg_q <= s_prg_latch;
-			end if;
-		end if;
-	end process;
-	
 	process (i_video_mode)
 	begin
 		case i_video_mode is
@@ -856,11 +841,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if i_reset_n = '0' then
-				s_cpu_counter <= 0;
-			elsif i_mode_change = '1' then
-				s_cpu_counter <= 0;
-			elsif s_cpu_counter = s_cpu_divider - 1 then
+			if s_cpu_counter = s_cpu_divider - 1 then
 				s_cpu_counter <= 0;
 			else
 				s_cpu_counter <= s_cpu_counter + 1;
@@ -871,11 +852,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if i_reset_n = '0' then
-				s_ppu_counter <= 0;
-			elsif i_mode_change = '1' then
-				s_ppu_counter <= 0;
-			elsif s_ppu_counter = s_ppu_divider - 1 then
+			if s_ppu_counter = s_ppu_divider - 1 then
 				s_ppu_counter <= 0;
 			else
 				s_ppu_counter <= s_ppu_counter + 1;
@@ -900,8 +877,23 @@ begin
 	begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
+				s_prg_q <= (others => '0');
+			elsif s_cpu_clk_enable = '1' then
+				if s_cpu_counter = s_cpu_divider - 1 then
+					s_prg_q <= i_prg_q;
+				else
+					s_prg_q <= s_prg_latch;
+				end if;
+			end if;
+		end if;
+	end process;
+ 
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_reset_n = '0' then
 				s_prg_latch <= (others => '0');
-			elsif s_cpu_counter = s_sync_stop + 1 then
+			elsif s_cpu_counter = s_sync_stop then
 				s_prg_latch <= i_prg_q;
 			end if;
 		end if;
@@ -957,7 +949,6 @@ begin
 	o_chr_data <= s_chr_data;
 	o_chr_read_enable <= s_chr_read_enable;
 	o_chr_write_enable <= s_chr_write_enable;
-	-- o_prg_write_enable <= s_eff_write_enable;
 	o_prg_data <= s_eff_data;
 	
 end;
@@ -1008,7 +999,7 @@ architecture behavioral of nestest is
 			o_cpu_clk_enable : out std_logic;
 			o_cpu_sync : out std_logic;
 			o_vga_addr : out std_logic_vector(15 downto 0);
-			o_vga_data : out std_logic_vector(5 downto 0);
+			o_vga_data : out std_logic_vector(8 downto 0);
 			o_vga_write_enable : out std_logic;
 			o_vga_clk_enable : out std_logic;
 			o_audio_q : out std_logic_vector(15 downto 0)
