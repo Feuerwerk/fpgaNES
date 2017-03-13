@@ -40,7 +40,6 @@ entity data_path is
 		i_prg_q : in std_logic_vector(7 downto 0);
 		o_prg_addr : out std_logic_vector(14 downto 0);
 		o_prg_cs_n : out std_logic;
-		o_prg_write_enable : out std_logic;
 		o_ppu_addr : out std_logic_vector(2 downto 0);
 		o_ppu_cs_n : out std_logic;
 		o_apu_addr : out std_logic_vector(4 downto 0);
@@ -71,7 +70,6 @@ architecture behavioral of data_path is
 	signal s_ppu_addr : std_logic_vector(14 downto 0);
 	signal s_addr_type : addr_type_t;
 	signal s_addr_type_d : addr_type_t := nop;
-	signal s_sync_d : std_logic := '0';
 	
 begin
 	prgram : datamem port map
@@ -113,14 +111,6 @@ begin
 	
 	o_ppu_cs_n <= not i_sync when s_addr_type = ppu else '1';
 	o_apu_cs_n <= not i_clk_enable when s_addr_type = apu else '1';
-	o_prg_cs_n <= s_sync_d nand i_addr(15);
-	o_prg_write_enable <= i_write_enable/* when s_addr_type = rom else '0'*/;
-	
-	process (i_clk)
-	begin
-		if rising_edge(i_clk) then
-			s_sync_d <= i_sync;
-		end if;
-	end process;
+	o_prg_cs_n <= i_sync nand i_addr(15);
 	
 end;

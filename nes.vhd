@@ -661,7 +661,6 @@ architecture behavioral of nescore is
 			i_prg_q : in std_logic_vector(7 downto 0);
 			o_prg_addr : out std_logic_vector(14 downto 0);
 			o_prg_cs_n : out std_logic;
-			o_prg_write_enable : out std_logic;
 			o_ppu_addr : out std_logic_vector(2 downto 0);
 			o_ppu_cs_n : out std_logic;
 			o_apu_addr : out std_logic_vector(4 downto 0);
@@ -801,7 +800,6 @@ begin
 		i_prg_q => s_prg_q,
 		o_prg_addr => o_prg_addr,
 		o_prg_cs_n => o_prg_cs_n,
-		o_prg_write_enable => o_prg_write_enable,
 		o_ppu_addr => s_ppu_addr,
 		o_ppu_cs_n => s_ppu_cs_n,
 		o_apu_addr => s_apu_addr,
@@ -826,14 +824,14 @@ begin
 			when ntsc =>
 				s_cpu_divider <= 12;
 				s_ppu_divider <= 4;
-				s_sync_start <= 3;
-				s_sync_stop <= 11;
+				s_sync_start <= 1;
+				s_sync_stop <= 10;
 				
 			when pal =>
 				s_cpu_divider <= 16;
 				s_ppu_divider <= 5;
 				s_sync_start <= 2;
-				s_sync_stop <= 12;
+				s_sync_stop <= 14;
 			
 		end case;
 	end process;
@@ -950,6 +948,7 @@ begin
 	o_chr_read_enable <= s_chr_read_enable;
 	o_chr_write_enable <= s_chr_write_enable;
 	o_prg_data <= s_eff_data;
+	o_prg_write_enable <= s_eff_write_enable;
 	
 end;
 

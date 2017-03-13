@@ -1,0 +1,115 @@
+Terms
+-----
+clock =            master clock (21.477272 MHz)
+dot   = 4 clocks  = PPU pixel time
+cycle = 12 clocks = CPU instruction cycle
+
+Times relative to earliest in frame that $2002 reads VBL flag as set ($80), where that time is 0 dots + 0 clocks.
+
+
+Scope
+-----
+The scope settings are in the photos. Note that the voltage range is 2V/div since 10x probes are being used. Most pictures use 0.1uS/div (i.e. 100ns/div).
+
+Many of the B channel traces have the clock slightly visible.
+
+
+Timing pictures
+===============
+
+Misc
+----
+CHA: CPU A8, low for cycle that does indicated access.
+CHB: indicated line
+
+2002 D7 read
+CPU data out
+PHI2
+PPU *CE
+PRG *CE
+
+
+enable nmi around vbl end
+-------------------------
+Enables NMI around when VBL is ending
+
+CHA: CPU A8, low for cycle that writes $80 to $2000
+CHB: /VBL
+
+6818 dots + 3 clocks is the latest in the frame that NMI can be enabled and still occur. 6819+0 doesn't cause NMI, even though VBL spikes low for a moment.
+
+
+read 2002 around vbl end
+------------------------
+Reads $2002 around when VBL is ending
+
+CHA: CPU A8, low for cycle that reads $2002
+CHB: /VBL
+
+Two versions of CHB are superimposed: one with the $2002 read, and one without it, so that the time of normal clearing of /VBL can be seen for reference.
+
+6819 dots + 3 clocks is the latest in the frame that $2002 can be read back as $80. 
+5820 dots + 0 clocks reads back as $00.
+
+
+read 2002 around vbl begin
+--------------------------
+Reads $2002 around time VBL begins.
+
+CHA: CPU A8, low for cycle that reads $2002
+CHB: /VBL
+
+Two versions of CHB are superimposed: one with the $2002 read, and one without it, so that the time of normal assertion time /VBL can be seen for reference.
+
+As expected, the earliest read that finds the VBL flag set is at 0 dots + 0 clocks, since this is the definition of our relative times.
+
+
+nmi after 2002 read before vbl
+------------------------------
+Reads $2002 somewhat before VBL begins, and notes whether this suppresses NMI.
+
+CHA: CPU A8, low for cycle that reads $2002
+CHB: /VBL
+
+Two versions of CHB are superimposed: one with the $2002 read, and one without it, so that the time of normal assertion time /VBL can be seen for reference.
+
+The latest $2002 can be read without suppressing assertion of /VBL (and thus the NMI) is -2 dots + 1 clock (that is, -7 clocks). It's interesting that for two clock offsets, the $2002 read very slightly delays when /VBL goes low but doesn't suppress it.
+
+
+nmi detection time
+------------------
+Reads $2002 slightly after VBL begins, to find latest time in previous instruction cycle that it can trigger NMI.
+
+CHA: CPU A8, low for cycle that reads $2002
+CHB: /VBL
+
+
+2006 write to PPU A13 output
+----------------------------
+Writes $2006 at the four CPU-PPU alignments.
+
+CHA: CPU A8, low for cycle that writes $2006
+CHB: PPU A13
+
+This shows how the PPU quantizes $2006 address changes to a dot. All four result in PPU A13 changing at the same time.
+
+
+PPU address change vs vbl
+-------------------------
+Writes to $2006 to change PPU address at various times relative to VBL begin.
+
+CHA: PPU A13
+CHB: /VBL
+
+This shows how the PPU quantizes $2006 address changes to a dot, and how the change time is almost synchronized with the /VBL time (about 38 ns earlier than /VBL). This might be useful for other measurements.
+
+
+Read latch time
+---------------
+Has CPU D7 change at various times in read cycle.
+
+CHA: CPU A8, low for cycle that reads
+CHB: CPU D7 input
+
+CPU apparently latches about 460ns after A8 goes low.
+

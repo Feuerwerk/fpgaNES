@@ -1,0 +1,169 @@
+Basics
+------
+The NES has master clock source for CPU (2A03) and PPU (2C02). The PPU
+divides this by 4, and the CPU this by 12. Separate terms are used for a
+complete cycle of each clock, for brevity.
+
+Rate           Period     Term     Name
+21.477272 MHz ( 46.56 ns) "clocks" master clock
+ 5.369318 MHz (186.24 ns) "dots"   PPU clock
+ 1.789772 MHz (558.73 ns) "cycles" CPU clock
+
+Note that there are exactly 3 dots per cycle (12/4=3).
+
+There are four possible relative alignments of dots to cycles:
+
+clocks ************************
+dots   [**][**][**][**][**][**]
+dots   **][**][**][**][**][**][
+dots   *][**][**][**][**][**][*
+dots   ][**][**][**][**][**][**
+cycles [**********][**********]
+
+The CPU and PPU dividers have some internal state to remember how many
+master clocks have occurred since the most recent output clock. When the
+NES is powered up or reset, this internal state takes on random values,
+such that the alignment that gets established can't be known in advance.
+Once established, though, it does not change until the NES is reset or
+powered off.
+
+
+Alignment effects
+-----------------
+The CPU interacts with the PPU via reads, writes, interrupts, and
+indirectly via the cartridge mapper. If all these interactions were at the
+exact same point in a cycle, behavior would be the same regardless of
+alignment:
+
+dots   [X*][X*][X*]
+dots   X*][X*][X*][
+dots   *][X*][X*][X
+dots   ][X*][X*][X*
+cycles [****W*****]
+
+Above, the CPU writes to the PPU. It takes effect on the next X within a
+dot. So in the first alignment, it takes effect immediately. In the other
+algnments, it's too late, so it takes effect in the next dot, being delayed
+by 3, 2, and 1 clocks respectively. 
+
+It might seem that this varying delay is different behavior, but since the
+CPU can only write (or read) once per cycle, it makes no difference beyond
+this tiny delay; the CPU can't detect it, and nothing can "amplify" it to
+anything more than this.
+
+But, the above is not the case. Some events are processed at different
+times during a dot:
+
+dots   [XY][XY][XY]
+dots   XY][XY][XY][
+cycles [****W*****]
+
+In the first alignment, a write to X in the PPU is processed immediately,
+and Y in 1 clock, both in the second dot. In the second alignment, a write
+to X takes 3 clocks, occuring in the next dot, but Y occurs immediately. in
+the current dot. So depending on alignment, the dot the write goes to
+varies. This is the "amplification" effect. From here, one could write code
+that caused this difference to be a black screen and a white screen.
+
+There are many aspects of events vary within a cycle and dot. CPU read,
+write, interrupt check. Mapper write. PPU write, read. Particular PPU
+registers taking more or less time to process. So when the alignment varies
+even by a single clock, some of these fall on the next cycle/dot, while
+others stay on the same one. Thus, the timing must be documented for each
+of the four alignments.
+
+
+Frame synchronization
+---------------------
+To test the effects, code must synchronize the CPU to a PPU video frame.
+This could be based on any event that occurs at a specific time in the PPU
+frame. The simplest is when the VBL flag in $2002 bit 7 is set.
+
+Since the VBL flag will read back as 1 anytime after it's set, we want to
+synchronize so that we read it the earliest possible in the frame where
+it's set. We can do this by having a loop that reads $2002 once per frame,
+with a delay of one frame + 1 dot. This way in each frame it will
+effectively check one dot later, until it finds the VBL flag set (the loop
+is started so that the $2002 read is slightly before the flag is set).
+
+vbl  ---****--------------****--------------****--------------****----
+read *------------------*------------------*------------------*
+
+There are 341 dots per line, 262 lines per frame, thus 89342 dots per
+frame. When rendering is enabled, every other frame has one fewer dot.
+We'll synchronize with rendering disabled, for simplicity. Since there are
+3 dots per cycle, there are 89342/3=29780.67 cycles per frame, that is,
+29780 cycles and 2 dots. This isn't a whole number, so the frame's
+beginning will shift forward relative to a cycle each frame. If we delay
+29781 cycles, we'll effectively delay 1 frame+1 dot.
+
+dots   *****F*** first frame
+dots   ****F**** second frame (29781 cycles later)
+dots   ***F***** third frame
+dots   **F****** fourth frame
+cycles [*][*][*]
+
+sync:	delay 29781-7
+        bit $2002
+		bpl sync
+
+We first need to roughly synchronize so that VBL will occur before the
+$2002 read in the final synchronization loop.
+
+		bit $2002	; clear first
+coarse:	bit $2002
+		bpl coarse
+		
+		delay 29760	; almost a frame
+		
+sync:	delay 29781-7
+		bit $2002
+		bpl sync
+
+After this, we are synchronized with the PPU to dot precision. At this
+point we are 3 cycles after the beginning of the cycle that read $2002 just
+as VBL was set. If we do a read 29781-3 cycles after this, we'll be reading
+$2002 one dot after VBL was set (the second -3 delay adjustment is for the
+three cycles before the read in LDA $2002):
+
+		delay 29781 - 3 - 3
+		lda $2002
+
+If we wanted to read $2002 just as VBL is being set, we'd wait three frames
+(so we'd be 3 dots later in frame), minus one cycle (-3 dots), giving us
+effectively 0 dots delay:
+
+		delay 29781*3 - 1 - 3 - 3
+		lda $2002
+
+If we wanted to read $2002 one dot *before* VBL is set, we'd wait two
+frames (2 dots later in frame) minus one cycle (-3 dots), giving us
+effectively -1 dots:
+
+		delay 29781*2-1 - 3 - 3
+		lda $2002
+
+(the above code has been tested to be sure it really does read at the
+claimed times in the frame)
+
+Timings of events will be referred to relative to the earliest read cycle
+in a frame that finds the VBL flag set. So this read cycle is +0 dots. One
+dot before is -1 dots.
+
+
+Alignments
+----------
+The NES powers up/resets into one of four CPU-PPU alignments. Each is one
+master clock apart from the adjacent one. An alignment of 0 clocks is the
+one which causes the VBL sync loop above to read the VBL flag the absolute
+earliest in the frame. 1 clock reads the VBL flag one master clock after
+this, etc. up to an alignment of 3 clocks.
+
+clocks ****************
+dots   [**][**][**][**]
+vbl    ----************
+0clk   [***R******]
+1clk    [***R******]
+2clk     [***R******]
+3clk      [***R******]
+

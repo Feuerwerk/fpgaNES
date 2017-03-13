@@ -257,9 +257,7 @@ set_location_assignment PIN_L8 -to GND[3]
 set_location_assignment PIN_K9 -to GND[2]
 
 set_location_assignment PIN_L9 -to UART_TX
-set_instance_assignment -name IO_STANDARD "2.5 V" -to UART_TX
 set_location_assignment PIN_M9 -to UART_RX
-set_instance_assignment -name IO_STANDARD "2.5 V" -to UART_RX
 
 # Classic Timing Assignments
 # ==========================
@@ -270,7 +268,7 @@ set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS ON
 # Analysis & Synthesis Assignments
 # ================================
 set_global_assignment -name FAMILY "Cyclone V"
-set_global_assignment -name TOP_LEVEL_ENTITY nes
+set_global_assignment -name TOP_LEVEL_ENTITY nestest
 set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
 set_global_assignment -name VHDL_SHOW_LMF_MAPPING_MESSAGES OFF
 set_global_assignment -name PROJECT_IP_REGENERATION_POLICY ALWAYS_REGENERATE_IP
@@ -371,6 +369,11 @@ set_global_assignment -name EDA_OUTPUT_DATA_FORMAT VHDL -section_id eda_simulati
 
 # end ENTITY(vga_pll_0002)
 # ------------------------
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_instance_assignment -name IO_STANDARD "2.5 V" -to UART_TX
+set_instance_assignment -name IO_STANDARD "2.5 V" -to UART_RX
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_ADDR[12]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_ADDR[13]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_ADDR[10]
@@ -574,9 +577,6 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[18]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[19]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[20]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[21]
-set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
-set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
-set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_global_assignment -name VHDL_FILE common.vhd
 set_global_assignment -name VHDL_FILE nes.vhd
 set_global_assignment -name VHDL_FILE cpu.vhd
