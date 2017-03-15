@@ -41,6 +41,8 @@ entity nes is
 		HEX1 : out std_logic_vector(6 downto 0);
 		HEX2 : out std_logic_vector(6 downto 0);
 		HEX3 : out std_logic_vector(6 downto 0);
+		UART_RX: in std_logic;
+		UART_TX: out std_logic;
 		CPU_ADDR : out std_logic_vector(14 downto 0);
 		CPU_DATA : inout std_logic_vector(7 downto 0);
 		CPU_DIR : out std_logic;
@@ -119,12 +121,13 @@ architecture behavioral of nes is
 			i_ctrl_a_data : in std_logic := '1';
 			i_ctrl_b_data : in std_logic := '1';
 			i_video_mode : in video_mode_t := ntsc;
-			i_mode_change : in std_logic := '0';
 			i_ciram_ce_n : in std_logic;
 			i_ciram_a10 : in std_logic;
 			i_prg_q : in std_logic_vector(7 downto 0);
 			i_chr_q : in std_logic_vector(7 downto 0);
 			i_irq_n : in std_logic := '1';
+			i_rx : in std_logic := '1';
+			o_tx : out std_logic;
 			o_prg_addr : out std_logic_vector(14 downto 0);
 			o_prg_data : out std_logic_vector(7 downto 0);
 			o_prg_write_enable : out std_logic;
@@ -362,12 +365,13 @@ begin
 		i_ctrl_a_data => CTRL_A_DATA,
 		i_ctrl_b_data => CTRL_B_DATA,
 		i_video_mode => s_video_mode,
-		i_mode_change => s_mode_change,
 		i_ciram_ce_n => CIRAM_CE_N,
 		i_ciram_a10 => CIRAM_A10,
 		i_prg_q => CPU_DATA,
 		i_chr_q => PPU_DATA,
 		i_irq_n => IRQ_N,
+		i_rx => UART_RX,
+		o_tx => UART_TX,
 		o_prg_addr => s_prg_addr,
 		o_prg_data => s_prg_data,
 		o_prg_write_enable => s_prg_write_enable,
@@ -552,12 +556,13 @@ entity nescore is
 		i_ctrl_a_data : in std_logic := '1';
 		i_ctrl_b_data : in std_logic := '1';
 		i_video_mode : in video_mode_t := ntsc;
-		i_mode_change : in std_logic := '0';
 		i_ciram_ce_n : in std_logic := '1';
 		i_ciram_a10 : in std_logic := '0';
 		i_prg_q : in std_logic_vector(7 downto 0);
 		i_chr_q : in std_logic_vector(7 downto 0);
 		i_irq_n : in std_logic := '1';
+		i_rx : in std_logic := '1';
+		o_tx : out std_logic;
 		o_prg_addr : out std_logic_vector(14 downto 0);
 		o_prg_data : out std_logic_vector(7 downto 0);
 		o_prg_write_enable : out std_logic;
@@ -646,6 +651,21 @@ architecture behavioral of nescore is
 			o_dma_active : out std_logic
 		);
 	end component;
+	component peripherial_io is
+		port
+		(
+			i_clk : in std_logic;
+			i_clk_enable : in std_logic := '1';
+			i_reset_n : in std_logic;
+			i_addr : in std_logic_vector(2 downto 0);
+			i_data : in std_logic_vector(7 downto 0);
+			i_write_enable : in std_logic;
+			i_cs_n : in std_logic := '1';
+			i_rx : in std_logic := '1';
+			o_tx : out std_logic;
+			o_q : out std_logic_vector(7 downto 0)
+		);
+	end component;
 	component data_path is
 		port
 		(
@@ -659,12 +679,15 @@ architecture behavioral of nescore is
 			i_ppu_q : in std_logic_vector(7 downto 0);
 			i_apu_q : in std_logic_vector(7 downto 0);
 			i_prg_q : in std_logic_vector(7 downto 0);
+			i_pio_q : in std_logic_vector(7 downto 0);
 			o_prg_addr : out std_logic_vector(14 downto 0);
 			o_prg_cs_n : out std_logic;
 			o_ppu_addr : out std_logic_vector(2 downto 0);
 			o_ppu_cs_n : out std_logic;
 			o_apu_addr : out std_logic_vector(4 downto 0);
 			o_apu_cs_n : out std_logic;
+			o_pio_addr : out std_logic_vector(2 downto 0);
+			o_pio_cs_n : out std_logic;
 			o_q : out std_logic_vector(7 downto 0)
 		);
 	end component;
@@ -717,12 +740,19 @@ architecture behavioral of nescore is
 	signal s_chr_eff_q : std_logic_vector(7 downto 0);
 	signal s_prg_q : std_logic_vector(7 downto 0) := (others => '0');
 	signal s_prg_latch : std_logic_vector(7 downto 0) := (others => '0');
-	signal s_cpu_divider : natural;
-	signal s_ppu_divider : natural;
-	signal s_cpu_counter : natural := 0;
-	signal s_ppu_counter : natural := 0;
-	signal s_sync_start : natural;
-	signal s_sync_stop : natural;
+	signal s_cpu_divider : natural range 0 to 31 := 31;
+	signal s_ppu_divider : natural range 0 to 31 := 31;
+	signal s_cpu_counter : natural range 0 to 31 := 0;
+	signal s_ppu_counter : natural range 0 to 31 := 0;
+	signal s_sync_start : natural range 0 to 31 := 0;
+	signal s_sync_stop : natural range 0 to 31 := 0;
+	signal s_next_cpu_divider : natural range 0 to 31;
+	signal s_next_ppu_divider : natural range 0 to 31;
+	signal s_next_sync_start : natural range 0 to 31;
+	signal s_next_sync_stop : natural range 0 to 31;
+	signal s_pio_q : std_logic_vector(7 downto 0);
+	signal s_pio_addr : std_logic_vector(2 downto 0);
+	signal s_pio_cs_n : std_logic;
 	
 begin
 
@@ -786,6 +816,21 @@ begin
 		o_dma_ready => s_dma_ready,
 		o_dma_active => s_dma_active
 	);
+	/*
+	pio_core : peripherial_io port map
+	(
+		i_clk => i_clk,
+		i_clk_enable => s_cpu_clk_enable,
+		i_reset_n => i_reset_n,
+		i_addr => s_pio_addr,
+		i_data => s_eff_data,
+		i_write_enable => s_eff_write_enable,
+		i_cs_n => s_pio_cs_n,
+		i_rx => i_rx,
+		o_tx => o_tx,
+		o_q => s_pio_q
+	);
+	*/
 	dpath : data_path port map
 	(
 		i_clk => i_clk,
@@ -798,12 +843,15 @@ begin
 		i_ppu_q => s_ppu_q,
 		i_apu_q => s_apu_q,
 		i_prg_q => s_prg_q,
+		i_pio_q => s_pio_q,
 		o_prg_addr => o_prg_addr,
 		o_prg_cs_n => o_prg_cs_n,
 		o_ppu_addr => s_ppu_addr,
 		o_ppu_cs_n => s_ppu_cs_n,
 		o_apu_addr => s_apu_addr,
 		o_apu_cs_n => s_apu_cs_n,
+		o_pio_addr => s_pio_addr,
+		o_pio_cs_n => s_pio_cs_n,
 		o_q => s_mem_q
 	);
 	ciram : videomem port map
@@ -822,18 +870,30 @@ begin
 		case i_video_mode is
 		
 			when ntsc =>
-				s_cpu_divider <= 12;
-				s_ppu_divider <= 4;
-				s_sync_start <= 1;
-				s_sync_stop <= 10;
+				s_next_cpu_divider <= 12;
+				s_next_ppu_divider <= 4;
+				s_next_sync_start <= 1;
+				s_next_sync_stop <= 10;
 				
 			when pal =>
-				s_cpu_divider <= 16;
-				s_ppu_divider <= 5;
-				s_sync_start <= 2;
-				s_sync_stop <= 14;
+				s_next_cpu_divider <= 16;
+				s_next_ppu_divider <= 5;
+				s_next_sync_start <= 2;
+				s_next_sync_stop <= 14;
 			
 		end case;
+	end process;
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if (i_reset_n = '0') or ((s_cpu_counter = s_cpu_divider - 1) and (s_ppu_counter = s_ppu_divider - 1)) then
+				s_cpu_divider <= s_next_cpu_divider;
+				s_ppu_divider <= s_next_ppu_divider;
+				s_sync_start <= s_next_sync_start;
+				s_sync_stop <= s_next_sync_stop;
+			end if;
+		end if;
 	end process;
 	
 	process (i_clk)
@@ -885,7 +945,7 @@ begin
 			end if;
 		end if;
 	end process;
- 
+
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
@@ -978,12 +1038,13 @@ architecture behavioral of nestest is
 			i_ctrl_a_data : in std_logic := '1';
 			i_ctrl_b_data : in std_logic := '1';
 			i_video_mode : in video_mode_t := ntsc;
-			i_mode_change : in std_logic := '0';
 			i_ciram_ce_n : in std_logic := '1';
 			i_ciram_a10 : in std_logic := '0';
 			i_prg_q : in std_logic_vector(7 downto 0);
 			i_chr_q : in std_logic_vector(7 downto 0);
 			i_irq_n : in std_logic := '1';
+			i_rx : in std_logic := '1';
+			o_tx : out std_logic;
 			o_prg_addr : out std_logic_vector(14 downto 0);
 			o_prg_data : out std_logic_vector(7 downto 0);
 			o_prg_write_enable : out std_logic;

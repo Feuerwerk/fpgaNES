@@ -38,12 +38,15 @@ entity data_path is
 		i_ppu_q : in std_logic_vector(7 downto 0);
 		i_apu_q : in std_logic_vector(7 downto 0);
 		i_prg_q : in std_logic_vector(7 downto 0);
+		i_pio_q : in std_logic_vector(7 downto 0);
 		o_prg_addr : out std_logic_vector(14 downto 0);
 		o_prg_cs_n : out std_logic;
 		o_ppu_addr : out std_logic_vector(2 downto 0);
 		o_ppu_cs_n : out std_logic;
 		o_apu_addr : out std_logic_vector(4 downto 0);
 		o_apu_cs_n : out std_logic;
+		o_pio_addr : out std_logic_vector(2 downto 0);
+		o_pio_cs_n : out std_logic;
 		o_q : out std_logic_vector(7 downto 0)
 	);
 end data_path;
@@ -61,7 +64,7 @@ architecture behavioral of data_path is
 		);
 	end component;
 	
-	type addr_type_t is (nop, ram, rom, ppu, apu);
+	type addr_type_t is (nop, ram, rom, ppu, apu, pio);
 	
 	signal s_prgram_addr : std_logic_vector(10 downto 0);
 	signal s_prgram_q : std_logic_vector(7 downto 0);
@@ -93,6 +96,7 @@ begin
 
 	s_addr_type <= ppu when i_addr(15 downto 13) = "001"
 						else ram when i_addr(15 downto 13) = "000"
+						else pio when i_addr(15 downto 3) = "0100000000011"
 						else apu when i_addr(15 downto 5) = "01000000000"
 						else rom;
 						
@@ -100,6 +104,7 @@ begin
 		s_prgram_q when ram,
 		i_ppu_q when ppu,
 		i_apu_q when apu,
+		i_pio_q when pio,
 		i_prg_q when others;
 	
 	s_prgram_addr <= i_addr(10 downto 0);
@@ -108,7 +113,9 @@ begin
 	o_ppu_addr <= i_addr(2 downto 0);
 	o_apu_addr <= i_addr(4 downto 0);
 	o_prg_addr <= i_addr(14 downto 0);
+	o_pio_addr <= i_addr(2 downto 0);
 	
+	o_pio_cs_n <= not i_clk_enable when s_addr_type = pio else '1';
 	o_ppu_cs_n <= not i_sync when s_addr_type = ppu else '1';
 	o_apu_cs_n <= not i_clk_enable when s_addr_type = apu else '1';
 	o_prg_cs_n <= i_sync nand i_addr(15);
