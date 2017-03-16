@@ -936,12 +936,10 @@ begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_prg_q <= (others => '0');
-			elsif s_cpu_clk_enable = '1' then
-				if s_cpu_counter = s_cpu_divider - 1 then
-					s_prg_q <= i_prg_q;
-				else
-					s_prg_q <= s_prg_latch;
-				end if;
+			elsif s_cpu_counter = s_cpu_divider - 1 then
+				s_prg_q <= i_prg_q;
+			else
+				s_prg_q <= s_prg_latch;
 			end if;
 		end if;
 	end process;
