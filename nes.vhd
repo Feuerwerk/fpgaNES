@@ -1106,7 +1106,8 @@ architecture behavioral of nestest is
 	signal s_chr_write_enable : std_logic;
 	signal s_chr_q : std_logic_vector(7 downto 0);
 	signal s_chr_eff_q : std_logic_vector(7 downto 0);
-	signal s_init : std_logic := '1';
+	signal s_init_counter : natural := 12;
+	signal s_init : std_logic;
 	signal s_reset_n : std_logic;
 
 begin
@@ -1114,7 +1115,7 @@ begin
 	nes_core : nescore port map
 	(
 		i_clk => i_clk,
-		i_reset_n => i_reset_n,
+		i_reset_n => s_reset_n,
 		i_prg_q => s_prg_eff_q,
 		i_chr_q => s_chr_q,
 		i_ciram_ce_n => not s_chr_addr(13),
@@ -1151,11 +1152,14 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			s_init <= '0';
+			if s_init_counter /= 0 then
+				s_init_counter <= s_init_counter - 1;
+			end if;
 		end if;
 	end process;
 	
-	s_reset_n <= i_reset_n and not s_init;
+	s_init <= '1' when s_init_counter = 0 else '0';
+	s_reset_n <= i_reset_n and s_init;
 	s_prg_eff_q <= s_prg_q when s_prg_cs_n = '0' else (others => 'Z');
 	s_chr_eff_q <= s_chr_q when s_chr_read_enable = '1' else (others => 'Z');
 
