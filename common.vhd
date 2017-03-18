@@ -32,17 +32,17 @@ package common is
 	end record;
 	
 	type mode_t is (imp, imm, acc, zpn, zpx, zpy, abn, abx, aby, inx, iny, ind, rel);
-	type instruction_t is (unk, nop, lda, ldx, ldy, tax, tay, txa, tya, tsx, txs, clc, cli, clv, cld, secr, sed, sei, adc, sbc, inc, inx, iny, dec, dex, dey, cpx, cpy, bcc, bcs, beq, bne, bmi, bpl, bvc, bvs, jsr, rts, rti, ora, and_i, eor, cmp, sta, stx, sty, pha, php, pla, plp, rol_i, ror_i, lsr, asl, jmp, bit_i, brk, rst, int, nmi);
+	type instruction_t is (unk, nop, lda, ldx, ldy, tax, tay, txa, tya, tsx, txs, clc, cli, clv, cld, secr, sed, sei, adc, sbc, inc, inx, iny, dec, dex, dey, cpx, cpy, bcc, bcs, beq, bne, bmi, bpl, bvc, bvs, jsr, rts, rti, ora, and_i, eor, cmp, sta, stx, sty, pha, php, pla, plp, rol_i, ror_i, lsr, asl, jmp, bit_i, brk);
 	
 	type pc_op_t is (nop, inc, split, pla, pha, daq);
 	type in_op_t is (nop, ena, alq, ald, fff);
-	type out_op_t is (nop, ena, din, pch, pcl, arg, xrg, yrg, flg, flz);
+	type out_op_t is (nop, ena, din, pch, pcl, arg, xrg, yrg, flg);
 	type reg_op_t is (nop, arg, xrg, yrg, srg);
 	type alu_op_t is (psa, add, adc, sub, sbc, ada, ora, eor, rla, rra, lsr, asl);
 	type addr_op_t is (nop, zaq, daq, aqd, div, oaq, oad, zvl, adv, vaq);
 	type ctrl_op_t is (nop, alc, bcc, bcs, beq, bne, bmi, bpl, bvc, bvs, don);
 	type flags_op_t is (nop, din, nz, nzc, nzv, nvzc, clc, cli, clv, cld, stc, sed, sei);
-	type alu_inp_t is (din, val, arg, xrg, yrg, srg, one, pcl, pch, aci, alq, auc, brk, rst, nmi);
+	type alu_inp_t is (din, val, arg, xrg, yrg, srg, one, pcl, pch, aci, alq, auc, brk);
 	
 	type undef_video_mode_t is (unk, ntsc, pal);
 	subtype video_mode_t is undef_video_mode_t range ntsc to pal;

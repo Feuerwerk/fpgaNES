@@ -612,18 +612,6 @@ begin
 				o_instruction <= brk;
 				o_mode <= imp;
 				
-			when x"02" =>
-				o_instruction <= rst;
-				o_mode <= imp;
-				
-			when x"03" =>
-				o_instruction <= int;
-				o_mode <= imp;
-				
-			when x"04" =>
-				o_instruction <= nmi;
-				o_mode <= imp;
-				
 			when x"e9" =>
 				o_instruction <= sbc;
 				o_mode <= imm;
@@ -822,34 +810,32 @@ architecture behavioral of cpu is
 		);
 	end component;
 	
+	constant BRK_OPCODE : std_logic_vector(7 downto 0) := x"00";
 	constant RST_OPCODE : std_logic_vector(7 downto 0) := x"02";
 	constant INT_OPCODE : std_logic_vector(7 downto 0) := x"03";
 	constant NMI_OPCODE : std_logic_vector(7 downto 0) := x"04";
 	
-	type opcode_t is (def, rst, int, nmi);
+	type opcode_override_t is (nop, rst, int, nmi);
 
 	signal s_mem_addr : std_logic_vector(15 downto 0);
 	signal s_mem_data : std_logic_vector(7 downto 0);
 	signal s_mem_write_enable : std_logic;
 	signal s_cycle : std_logic_vector(2 downto 0) := "000";
 	signal s_pc : std_logic_vector(15 downto 0);
-	signal s_pc_reg : std_logic_vector(15 downto 0) := x"0400";
+	signal s_pc_reg : std_logic_vector(15 downto 0) := x"00FF";
 	signal s_pc_inc : std_logic_vector(15 downto 0);
 	signal s_instruction : instruction_t;
 	signal s_mode : mode_t;
 	signal s_value : std_logic_vector(7 downto 0) := x"00";
 	signal s_opcode : std_logic_vector(7 downto 0);
-	signal s_next_opcode : std_logic_vector(7 downto 0);
-	signal s_current_opcode : std_logic_vector(7 downto 0) := x"ff";
+	signal s_current_opcode : std_logic_vector(7 downto 0) := x"00";
 	signal s_fetch : boolean;
 	signal s_fetch_d : boolean := false;
-	signal s_new_value : std_logic_vector(7 downto 0) := x"00";
-	signal s_write_enable : std_logic := '0';
 	signal s_areg : std_logic_vector(7 downto 0) := x"00";
 	signal s_xreg : std_logic_vector(7 downto 0) := x"00";
 	signal s_yreg : std_logic_vector(7 downto 0) := x"00";
-	signal s_sreg : std_logic_vector(7 downto 0) := x"ff";
-	signal s_flags : flags_t := ( i => '1', others => '0' );
+	signal s_sreg : std_logic_vector(7 downto 0) := x"00";
+	signal s_flags : flags_t := ( others => '0' );
 	signal s_alu_a : std_logic_vector(7 downto 0);
 	signal s_alu_b : std_logic_vector(7 downto 0);
 	signal s_alu_q : std_logic_vector(8 downto 0);
@@ -870,16 +856,17 @@ architecture behavioral of cpu is
 	signal s_ctrl_op : ctrl_op_t;
 	signal s_alu_a_op : alu_inp_t;
 	signal s_alu_b_op : alu_inp_t;
-	signal s_prefetch : boolean := true;
 	signal s_int_active : boolean;
 	signal s_nmi_active : boolean := false;
 	signal s_nmi_last : std_logic := '1';
 	signal s_clk_enable : std_logic;
 	signal s_ready_d : std_logic := '1';
 	signal s_sync_edge : std_logic;
-	signal s_opcode_change : opcode_t := def;
+	signal s_opcode_override : opcode_override_t := nop;
 	signal s_mem_q : std_logic_vector(7 downto 0);
 	signal s_mem_q_d : std_logic_vector(7 downto 0) := x"00";
+	signal s_break_addr : std_logic_vector(7 downto 0);
+	signal s_enable_b : std_logic;
 	alias s_alu_res : std_logic_vector(7 downto 0) is s_alu_q(7 downto 0);
 	alias s_alu_c : std_logic is s_alu_q(8);
 	
@@ -954,31 +941,15 @@ begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
-					s_opcode_change <= def;
-				elsif s_prefetch then
-					s_opcode_change <= rst;
+					s_opcode_override <= rst;
 				elsif s_fetch then
 					if s_nmi_active then
-						s_opcode_change <= nmi;
+						s_opcode_override <= nmi;
 					elsif s_int_active then
-						s_opcode_change <= int;
+						s_opcode_override <= int;
 					else
-						s_opcode_change <= def;
+						s_opcode_override <= nop;
 					end if;
-				end if;
-			end if;
-		end if;
-	end process;
-	
-	
-	process (i_clk)
-	begin
-		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
-				if i_reset_n = '0' then
-					s_prefetch <= true;
-				else
-					s_prefetch <= false;
 				end if;
 			end if;
 		end if;
@@ -1020,7 +991,7 @@ begin
 					s_nmi_active <= false;
 				elsif (s_nmi_last = '1') and (i_nmi_n = '0') then
 					s_nmi_active <= true;
-				elsif (s_opcode = NMI_OPCODE) then
+				elsif (s_opcode_override = nmi) then
 					s_nmi_active <= false;
 				end if;
 				
@@ -1072,6 +1043,8 @@ begin
 					else
 						s_pc_reg <= s_pc_inc;
 					end if;
+				elsif (s_opcode_override /= nop) and (s_cycle = "000") then
+					s_pc_reg <= s_pc;
 				else
 					case s_pc_op is
 					
@@ -1141,7 +1114,7 @@ begin
 	
 	-- Ouput
 
-	with s_out_op select s_new_value <=
+	with s_out_op select s_mem_data <=
 		s_mem_q when din,
 		s_alu_res when ena,
 		s_pc(7 downto 0) when pcl,
@@ -1149,11 +1122,8 @@ begin
 		s_areg when arg,
 		s_xreg when xrg,
 		s_yreg when yrg,
-		to_std_logic_vector(s_flags, '1') when flg,
-		to_std_logic_vector(s_flags, '0') when flz,
+		s_flags.n & s_flags.v & '1' & s_enable_b & s_flags.d & s_flags.i & s_flags.z & s_flags.c when flg,
 		x"--" when others;
-		
-	s_write_enable <= '0' when s_out_op = nop else '1';
 	
 	-- Registers
 
@@ -1165,7 +1135,7 @@ begin
 					s_areg <= x"00";
 					s_xreg <= x"00";
 					s_yreg <= x"00";
-					s_sreg <= x"ff";
+					s_sreg <= x"00";
 				else
 					case s_reg_op is
 					
@@ -1196,7 +1166,7 @@ begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
-					s_flags.i <= '1';
+					s_flags.i <= '0';
 				else
 					case s_flags_op is
 					
@@ -1375,9 +1345,7 @@ begin
 		s_alu_carry_input when aci,
 		7x"0" & s_alu_q_d(8) when auc,
 		x"01" when one,
-		x"fe" when brk,
-		x"fc" when rst,
-		x"fa" when nmi,
+		s_break_addr when brk,
 		x"--" when others;
 
 	-- ALU B Register
@@ -1395,9 +1363,7 @@ begin
 		s_alu_carry_input when aci,
 		7x"0" & s_alu_q_d(8) when auc,
 		x"01" when one,
-		x"fe" when brk,
-		x"fc" when rst,
-		x"fa" when nmi,
+		s_break_addr when brk,
 		x"--" when others;
 	
 	-- Addr
@@ -1427,17 +1393,18 @@ begin
 		false when others;
 		
 	-- current opcode which has to be executed
-	s_opcode <= s_next_opcode when s_fetch_d
+	s_opcode <= BRK_OPCODE when s_opcode_override /= nop
+	            else s_mem_q when s_fetch_d
 	            else s_current_opcode;
 					
-	with s_opcode_change select s_next_opcode <=
-		RST_OPCODE when rst,
-	   NMI_OPCODE when nmi,
-	   INT_OPCODE when int,
-	   s_mem_q when others;
+	with s_opcode_override select s_break_addr <=
+		x"fc" when rst,
+		x"fa" when nmi,
+		x"fe" when others;
 
-	s_mem_data <= s_new_value;
-	s_mem_write_enable <= s_write_enable;
+	s_mem_write_enable <= '0' when s_opcode_override = rst
+	                      else '0' when s_out_op = nop
+	                      else '1';
 	
 	-- is 1 when a signed overflow occured
 	s_overflow <= (s_alu_a(7) xnor s_alu_b(7)) and (s_alu_a(7) xor s_alu_res(7)) when (s_alu_op = add) or (s_alu_op = adc)
@@ -1463,7 +1430,9 @@ begin
 		'1' when others;
 
 	-- is 1 when fetching is active in the next cycle
-	s_fetch <= s_prefetch or (s_ctrl_op = don) or (s_branch = '0');
+	s_fetch <= (s_ctrl_op = don) or (s_branch = '0');
+	
+	s_enable_b <= '1' when s_opcode_override = nop else '0';
 
 	o_mem_addr <= s_mem_addr;
 	o_mem_data <= s_mem_data;

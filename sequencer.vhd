@@ -587,7 +587,7 @@ begin
 		ena when b"1111_1110_101", -- INC / Absolute,X
 		pch when b"0000_0011_001", -- INT / Implied
 		pcl when b"0000_0011_010", -- INT / Implied
-		flz when b"0000_0011_011", -- INT / Implied
+		flg when b"0000_0011_011", -- INT / Implied
 		pch when b"0010_0000_010", -- JSR / Absolute
 		pcl when b"0010_0000_011", -- JSR / Absolute
 		ena when b"0100_0110_010", -- LSR / Zero Page
@@ -600,7 +600,7 @@ begin
 		ena when b"0101_1110_101", -- LSR / Absolute,X
 		pch when b"0000_0100_001", -- NMI / Implied
 		pcl when b"0000_0100_010", -- NMI / Implied
-		flz when b"0000_0100_011", -- NMI / Implied
+		flg when b"0000_0100_011", -- NMI / Implied
 		arg when b"0100_1000_001", -- PHA / Implied
 		flg when b"0000_1000_001", -- PHP / Implied
 		ena when b"0010_0110_010", -- ROL / Zero Page
@@ -1176,7 +1176,7 @@ begin
 		alq when b"0000_0100_001", -- NMI / Implied
 		alq when b"0000_0100_010", -- NMI / Implied
 		alq when b"0000_0100_011", -- NMI / Implied
-		nmi when b"0000_0100_100", -- NMI / Implied
+		brk when b"0000_0100_100", -- NMI / Implied
 		alq when b"0000_0100_101", -- NMI / Implied
 		val when b"0000_0100_110", -- NMI / Implied
 		arg when b"0000_1001_001", -- ORA / Immediate
@@ -1218,7 +1218,7 @@ begin
 		xrg when b"0111_1110_010", -- ROR / Absolute,X
 		val when b"0111_1110_011", -- ROR / Absolute,X
 		alq when b"0111_1110_100", -- ROR / Absolute,X
-		rst when b"0000_0010_001", -- RST / Implied
+		brk when b"0000_0010_001", -- RST / Implied
 		alq when b"0000_0010_010", -- RST / Implied
 		val when b"0000_0010_011", -- RST / Implied
 		srg when b"0100_0000_001", -- RTI / Implied

@@ -316,9 +316,11 @@ begin
 		refclk => CLOCK_50_B5B,
 		rst => not CPU_RESET_n,
 		outclk_0 => s_master_clk,
-		locked => s_reset_n,
+		locked => s_reset_n
+		/*,
 		reconfig_to_pll => s_reconfig_to_pll,
 		reconfig_from_pll => s_reconfig_from_pll
+		*/
 	);
 	audio : audio_pll port map
 	(
@@ -334,6 +336,7 @@ begin
 		outclk_0 => s_vga_clk,
 		locked => s_vga_reset_n
 	);
+	/*
 	master_recfg : master_reconfig port map
 	(
 		mgmt_clk => CLOCK_50_B5B,
@@ -357,6 +360,7 @@ begin
 		o_reconfig_addr => s_reconfig_addr,
 		o_reconfig_new_data => s_reconfig_new_data
 	);
+	*/
 	nes_core : nescore port map
 	(
 		i_clk => s_master_clk,
@@ -518,7 +522,7 @@ begin
 	CIC_CLK <= '0';
 	CIC_TOPAK <= '0';
 	CIC_RST_N <= '1';
-	SYS_CLK <= s_master_clk;
+	SYS_CLK <= '0'; -- s_master_clk
 	M2 <= s_cpu_sync;
 	GND <= (others => '0');
 	
@@ -750,6 +754,8 @@ architecture behavioral of nescore is
 	signal s_next_ppu_divider : natural range 0 to 31;
 	signal s_next_sync_start : natural range 0 to 31;
 	signal s_next_sync_stop : natural range 0 to 31;
+	signal s_last_cpu_cycle : boolean;
+	signal s_last_ppu_cycle : boolean;
 	signal s_pio_q : std_logic_vector(7 downto 0);
 	signal s_pio_addr : std_logic_vector(2 downto 0);
 	signal s_pio_cs_n : std_logic;
@@ -887,7 +893,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if (i_reset_n = '0') or ((s_cpu_counter = s_cpu_divider - 1) and (s_ppu_counter = s_ppu_divider - 1)) then
+			if (i_reset_n = '0') or (s_last_cpu_cycle and s_last_ppu_cycle) then
 				s_cpu_divider <= s_next_cpu_divider;
 				s_ppu_divider <= s_next_ppu_divider;
 				s_sync_start <= s_next_sync_start;
@@ -899,7 +905,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_cpu_counter = s_cpu_divider - 1 then
+			if s_last_cpu_cycle then
 				s_cpu_counter <= 0;
 			else
 				s_cpu_counter <= s_cpu_counter + 1;
@@ -910,7 +916,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_ppu_counter = s_ppu_divider - 1 then
+			if s_last_ppu_cycle then
 				s_ppu_counter <= 0;
 			else
 				s_ppu_counter <= s_ppu_counter + 1;
@@ -921,9 +927,7 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if i_reset_n = '0' then
-				s_cpu_sync <= '0';
-			elsif s_cpu_counter = s_sync_stop then
+			if s_cpu_counter = s_sync_stop then
 				s_cpu_sync <= '0';
 			elsif s_cpu_counter = s_sync_start then
 				s_cpu_sync <= '1';
@@ -936,7 +940,7 @@ begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_prg_q <= (others => '0');
-			elsif s_cpu_counter = s_cpu_divider - 1 then
+			elsif s_last_cpu_cycle then
 				s_prg_q <= i_prg_q;
 			else
 				s_prg_q <= s_prg_latch;
@@ -988,8 +992,11 @@ begin
 		end if;
 	end process;
 	
-	s_cpu_clk_enable <= '1' when s_cpu_counter = s_cpu_divider - 1 else '0';
-	s_ppu_clk_enable <= '1' when s_ppu_counter = s_ppu_divider - 1 else '0';
+	s_last_cpu_cycle <= s_cpu_counter = s_cpu_divider - 1;
+	s_last_ppu_cycle <= s_ppu_counter = s_ppu_divider - 1;
+	
+	s_cpu_clk_enable <= '1' when s_last_cpu_cycle else '0';
+	s_ppu_clk_enable <= '1' when s_last_ppu_cycle else '0';
 	
 	s_eff_write_enable <= s_dma_write_enable when s_dma_active = '1' else s_mem_write_enable;
 	s_eff_addr <= s_dma_addr when s_dma_active = '1' else s_mem_addr;
@@ -1099,6 +1106,8 @@ architecture behavioral of nestest is
 	signal s_chr_write_enable : std_logic;
 	signal s_chr_q : std_logic_vector(7 downto 0);
 	signal s_chr_eff_q : std_logic_vector(7 downto 0);
+	signal s_init : std_logic := '1';
+	signal s_reset_n : std_logic;
 
 begin
 
@@ -1139,6 +1148,14 @@ begin
 		q => s_chr_q
 	);
 	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			s_init <= '0';
+		end if;
+	end process;
+	
+	s_reset_n <= i_reset_n and not s_init;
 	s_prg_eff_q <= s_prg_q when s_prg_cs_n = '0' else (others => 'Z');
 	s_chr_eff_q <= s_chr_q when s_chr_read_enable = '1' else (others => 'Z');
 
