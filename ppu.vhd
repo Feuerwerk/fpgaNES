@@ -227,6 +227,8 @@ architecture behavioral of ppu is
 	signal s_next_ypos : std_logic_vector(7 downto 0);
 	signal s_cycle : integer range 0 to 340 := 0;
 	signal s_line : integer range 0 to 261 := 261;
+	signal s_max_line : integer range 0 to 311 := 261;
+	signal s_new_max_line : integer range 0 to 311;
 	signal s_tile_index : std_logic_vector(7 downto 0);
 	signal s_background_half : std_logic := '0';
 	signal s_sprite_half : std_logic := '0';
@@ -252,6 +254,7 @@ architecture behavioral of ppu is
 	signal s_out_write_enable : std_logic := '0';
 	signal s_visible_line : boolean;
 	signal s_visible_or_prescan_line : boolean;
+	signal s_prescan_line : boolean;
 	signal s_background_pixel : std_logic_vector(1 downto 0);
 	signal s_winning_sprite : sprite_t;
 	signal s_spr_idx : integer range 0 to 7 := 0;
@@ -528,20 +531,36 @@ begin
 	end process;
 
 	-- Zeilen & Zyklen
+	
+	process (i_video_mode)
+	begin
+		case i_video_mode is
+		
+			when ntsc =>
+				s_new_max_line <= 261;
+				
+			when pal =>
+				s_new_max_line <= 311;
+			
+		end case;
+	end process;
+	
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
-					s_line <= 261;
+					s_line <= s_new_max_line;
+					s_max_line <= s_new_max_line;
 					s_cycle <= 0;
 					s_frame_latch <= true;
 				else
 					if s_cycle = 340 then
 						s_cycle <= 0;
 						
-						if s_line = 261 then
+						if s_prescan_line then
 							s_line <= 0;
+							s_max_line <= s_new_max_line;
 							s_frame_latch <= not s_frame_latch;
 							
 							if s_shortcut_state then
@@ -947,7 +966,7 @@ begin
 					end if;
 					
 					-- Sprite Overflow zu Beginn eines neuen Frames zurücksetzen
-					if (s_line = 261) and (s_cycle = 1) then
+					if s_prescan_line and (s_cycle = 1) then
 						s_sprite_overflow <= '0';
 					end if;
 					
@@ -1210,7 +1229,7 @@ begin
 			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_vblank <= '0';
-				elsif (s_line = 261) and (s_cycle = 1) then
+				elsif s_prescan_line and (s_cycle = 1) then
 					s_vblank <= '0';
 				elsif (s_io_state = ppustatus) and (s_io_cycle = 1) then
 					s_vblank <= '0'; -- VBlank zurücksetzen wenn PPUSTATUS gelesen wird
@@ -1240,7 +1259,7 @@ begin
 						if s_sprite_0_visible and (s_sprites(0).pixel /= "00") and (s_background_pixel /= "00") then
 							s_sprite_0_trigger <= true;
 						end if;
-					elsif (s_line = 261) and (s_cycle = 1) then
+					elsif s_prescan_line and (s_cycle = 1) then
 						s_sprite_0_hit <= '0';
 					end if;
 				end if;
@@ -1312,7 +1331,8 @@ begin
 	s_out_write_enable <= '1' when s_visible_line and s_render else '0';
 	s_render <= (s_cycle >= 1) and (s_cycle < 257);
 	s_visible_line <= s_line < 240;
-	s_visible_or_prescan_line <= s_visible_line or (s_line = 261);
+	s_prescan_line <= s_line = s_max_line;
+	s_visible_or_prescan_line <= s_visible_line or s_prescan_line;
 	s_hblank_cycle <= (s_cycle > 256) and (s_cycle < 321);
 	s_vram_bkg_inc <= std_logic_vector(to_unsigned(s_cycle - 1, 3)) = "110";
 	s_out_color <= s_palette_color and 6x"30" when s_greyscale = '1' else s_palette_color;
@@ -1321,14 +1341,14 @@ begin
 	s_perform_oam_write_access <= (s_io_state = oamdata_write) and (s_io_cycle = 1);
 	s_perform_oam_access <= s_perform_oam_write_access;
 	s_enable_rendering <= (s_enable_background = '1') or (s_enable_sprites = '1');
-	s_shortcut_state <= s_frame_latch and (s_line = 261) and s_enable_rendering;
+	s_shortcut_state <= s_frame_latch and s_prescan_line and s_enable_rendering;
 	
 	s_palette_quadrant <= s_vram_addr_v(6) & s_vram_addr_v(1);
 	s_tile_addr <= "0010" & s_vram_addr_v(11 downto 0);
 	s_attr_addr <= "0010" & s_vram_addr_v(11 downto 10) & "1111" & s_vram_addr_v(9 downto 7) & s_vram_addr_v(4 downto 2);
 	s_tile_lo_addr <= "000" & s_background_half & s_tile_index & '0' & s_vram_addr_v(14 downto 12);
 	s_tile_hi_addr <= "000" & s_background_half & s_tile_index & '1' & s_vram_addr_v(14 downto 12);
-	s_vassign <= (s_cycle >= 280) and (s_cycle <= 304) and (s_line = 261);
+	s_vassign <= (s_cycle >= 280) and (s_cycle <= 304) and s_prescan_line;
 	s_background_pixel <= s_th_q(s_fine_scroll_x) & s_tl_q(s_fine_scroll_x) when (s_enable_background = '1') and ((s_render_first_bkg_col = '1') or (s_xpos(7 downto 3) /= "00000")) else "00";
 	s_background_palette_index <= s_bh_q(s_fine_scroll_x) & s_bl_q(s_fine_scroll_x);
 	s_palette_color <= s_palette_mem(to_pal_idx(s_palette_index))(5 downto 0);
