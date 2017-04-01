@@ -1043,13 +1043,18 @@ begin
 					else
 						s_pc_reg <= s_pc_inc;
 					end if;
-				elsif (s_opcode_override /= nop) and (s_cycle = "000") then
-					s_pc_reg <= s_pc;
 				else
 					case s_pc_op is
 					
 						when inc | daq =>
 							s_pc_reg <= s_pc_inc;
+							
+						when enb =>
+							if s_enable_b = '1' then
+								s_pc_reg <= s_pc_inc;
+							else
+								s_pc_reg <= s_pc;
+							end if;
 							
 						when pla =>
 							s_pc_reg(7 downto 0) <= s_alu_res;

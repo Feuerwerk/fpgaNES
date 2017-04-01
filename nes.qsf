@@ -268,7 +268,7 @@ set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS ON
 # Analysis & Synthesis Assignments
 # ================================
 set_global_assignment -name FAMILY "Cyclone V"
-set_global_assignment -name TOP_LEVEL_ENTITY nestest
+set_global_assignment -name TOP_LEVEL_ENTITY nes
 set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
 set_global_assignment -name VHDL_SHOW_LMF_MAPPING_MESSAGES OFF
 set_global_assignment -name PROJECT_IP_REGENERATION_POLICY ALWAYS_REGENERATE_IP
@@ -401,9 +401,6 @@ set_global_assignment -name QIP_FILE master_reconfig.qip
 set_global_assignment -name SIP_FILE master_reconfig.sip
 set_global_assignment -name HEX_FILE test_videorom.hex
 set_global_assignment -name HEX_FILE test_progmem.hex
-set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
-set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
-set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_instance_assignment -name IO_STANDARD "2.5 V" -to UART_TX
 set_instance_assignment -name IO_STANDARD "2.5 V" -to UART_RX
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_ADDR[12]
@@ -609,4 +606,7 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[18]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[19]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[20]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[21]
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

@@ -1120,6 +1120,7 @@ begin
 		i_chr_q => s_chr_q,
 		i_ciram_ce_n => not s_chr_addr(13),
 		i_ciram_a10 => s_chr_addr(10),
+		i_video_mode => pal,
 		o_prg_addr => s_prg_addr,
 		o_prg_data => s_prg_data,
 		o_prg_write_enable => s_prg_write_enable,

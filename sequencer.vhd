@@ -283,7 +283,7 @@ begin
 		inc when b"0001_0000_000", -- BPL / Relative
 		pla when b"0001_0000_001", -- BPL / Relative
 		pha when b"0001_0000_010", -- BPL / Relative
-		inc when b"0000_0000_000", -- BRK / Implied
+		enb when b"0000_0000_000", -- BRK / Implied
 		daq when b"0000_0000_110", -- BRK / Implied
 		inc when b"0101_0000_000", -- BVC / Relative
 		pla when b"0101_0000_001", -- BVC / Relative
