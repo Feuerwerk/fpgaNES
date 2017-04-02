@@ -246,12 +246,24 @@ architecture behavioral of nes is
 			i_clk : in std_logic;
 			i_reset_n : in std_logic := '1';
 			i_video_mode : in video_mode_t;
-			i_mode_change : in std_logic;
+			i_waitrequest : in std_logic := '0';
 			i_reconfig_data : in std_logic_vector(31 downto 0) := (others => '0');
+			o_video_mode : out video_mode_t;
+			o_status : out std_logic_vector(7 downto 0);
 			o_reconfig_read : out std_logic;
 			o_reconfig_write : out std_logic;
 			o_reconfig_addr : out std_logic_vector(5 downto 0);
 			o_reconfig_new_data : out std_logic_vector(31 downto 0)
+		);
+	end component;
+	component debounce is
+		port
+		(
+			i_clk : in std_logic;
+			i_in : in std_logic;
+			o_q : out std_logic;
+			o_riseedge : out std_logic;
+			o_falledge : out std_logic
 		);
 	end component;
 	
@@ -305,10 +317,11 @@ architecture behavioral of nes is
 	signal s_reconfig_addr : std_logic_vector(5 downto 0) := (others => '0');
 	signal s_reconfig_data : std_logic_vector(31 downto 0);
 	signal s_reconfig_new_data : std_logic_vector(31 downto 0) := (others => '0');
+	signal s_reconfig_waitrequest : std_logic;
 	signal s_video_mode : video_mode_t;
-	signal s_video_mode_d : undef_video_mode_t := unk;
-	signal s_mode_change : std_logic := '0';
+	signal s_video_mode_configured : video_mode_t;
 	signal s_key_d : std_logic_vector(3 downto 0) := (others => '1');
+	signal s_debounced_vm_switch : std_logic;
 
 begin
 	master : master_pll port map
@@ -316,11 +329,9 @@ begin
 		refclk => CLOCK_50_B5B,
 		rst => not CPU_RESET_n,
 		outclk_0 => s_master_clk,
-		locked => s_reset_n
-		/*,
+		locked => s_reset_n,
 		reconfig_to_pll => s_reconfig_to_pll,
 		reconfig_from_pll => s_reconfig_from_pll
-		*/
 	);
 	audio : audio_pll port map
 	(
@@ -336,16 +347,16 @@ begin
 		outclk_0 => s_vga_clk,
 		locked => s_vga_reset_n
 	);
-	/*
 	master_recfg : master_reconfig port map
 	(
 		mgmt_clk => CLOCK_50_B5B,
-		mgmt_reset => not CPU_RESET_n,
+--		mgmt_reset => not CPU_RESET_n,
 		mgmt_read => s_reconfig_read,
 		mgmt_write => s_reconfig_write,
 		mgmt_address => s_reconfig_addr,
 		mgmt_readdata => s_reconfig_data,
 		mgmt_writedata => s_reconfig_new_data,
+		mgmt_waitrequest => s_reconfig_waitrequest,
 		reconfig_to_pll => s_reconfig_to_pll,
 		reconfig_from_pll => s_reconfig_from_pll
 	);
@@ -353,14 +364,15 @@ begin
 		i_clk => CLOCK_50_B5B,
 		i_reset_n => CPU_RESET_n,
 		i_video_mode => s_video_mode,
-		i_mode_change => '0',
+		i_waitrequest => s_reconfig_waitrequest,
 		i_reconfig_data => s_reconfig_data,
+		o_video_mode => s_video_mode_configured,
+		o_status => s_debug2,
 		o_reconfig_read => s_reconfig_read,
 		o_reconfig_write => s_reconfig_write,
 		o_reconfig_addr => s_reconfig_addr,
 		o_reconfig_new_data => s_reconfig_new_data
 	);
-	*/
 	nes_core : nescore port map
 	(
 		i_clk => s_master_clk,
@@ -463,41 +475,12 @@ begin
 		i_d => s_debug2(7 downto 4),
 		o_q => HEX3
 	);
-	
-	/*
-	process (CLOCK_50_B5B)
-	begin
-		if rising_edge(CLOCK_50_B5B) then
-			if CPU_RESET_n = '0' then
-				s_clk_divider <= 0;
-			elsif s_clk_divider = 4999 then
-				s_clk_divider <= 0;
-			else
-				s_clk_divider <= s_clk_divider + 1;
-			end if;
-		end if;
-	end process;
-	
-	s_clk_enable <= '1' when s_clk_divider = 4999 else '0';
-	
-	process (CLOCK_50_B5B)
-	begin
-		if rising_edge(CLOCK_50_B5B) then
-			if CPU_RESET_n = '0' then
-				s_video_mode_d <= unk;
-				s_mode_change <= '0';
-			elsif s_clk_enable = '1' then
-				s_mode_change <= '0';
-
-				if s_video_mode /= s_video_mode_d then
-					s_mode_change <= '1';
-				end if;
-			
-				s_video_mode_d <= s_video_mode;
-			end if;
-		end if;
-	end process;
-	*/
+	deb1 : debounce port map
+	(
+		i_clk => CLOCK_50_B5B,
+		i_in => SW(9),
+		o_q => s_debounced_vm_switch
+	);
 
 	HDMI_AUDIO_MCLK <= s_audio_clk;
 	HDMI_AUDIO_LRCLK <= s_audio_lrclk;
@@ -512,9 +495,11 @@ begin
 	AUD_DACLRCK <= s_audio_lrclk;
 	AUD_BCLK <= s_audio_sclk;
 	HDMI_TX_CLK <= s_vga_clk;
-	LEDR(9) <= not HDMI_TX_INT;
-	LEDR(8) <= s_ack_error;
-	LEDR(7 downto 0) <= (others => '0');
+	LEDR(9) <= '1' when s_video_mode_configured = pal else '0';
+	LEDR(8) <= s_reconfig_waitrequest;
+	LEDR(7) <= not HDMI_TX_INT;
+	LEDR(6) <= s_ack_error;
+	LEDR(5 downto 0) <= (others => '0');
 	LEDG <= (others => '0');
 	CTRL_A_DATA <= 'Z';
 	CTRL_B_DATA <= 'Z';
@@ -538,7 +523,7 @@ begin
 	PPU_WR_N <= not s_chr_write_enable;
 	PPU_A13_N <= not s_chr_addr(13);
 	
-	s_video_mode <= ntsc when SW(9) = '0' else pal;
+	s_video_mode <= ntsc when s_debounced_vm_switch = '0' else pal;
 	
 end;
 

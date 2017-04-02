@@ -980,7 +980,7 @@ begin
 						when idle =>
 							s_soa_addr <= "00000";
 						
-							if s_visible_line and (s_enable_sprites = '1') then
+							if s_visible_line and ((s_enable_sprites = '1') or (s_enable_background = '1')) then
 								s_spr_state <= clear1;
 								s_soa_write_enable <= '1';
 							else

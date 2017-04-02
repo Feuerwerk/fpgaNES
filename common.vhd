@@ -44,8 +44,7 @@ package common is
 	type flags_op_t is (nop, din, nz, nzc, nzv, nvzc, clc, cli, clv, cld, stc, sed, sei);
 	type alu_inp_t is (din, val, arg, xrg, yrg, srg, one, pcl, pch, aci, alq, auc, brk);
 	
-	type undef_video_mode_t is (unk, ntsc, pal);
-	subtype video_mode_t is undef_video_mode_t range ntsc to pal;
+	type video_mode_t is (ntsc, pal);
 
 	-- Constants
 	constant N_FLAG : integer := 7;

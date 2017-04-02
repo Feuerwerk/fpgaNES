@@ -369,38 +369,6 @@ set_global_assignment -name EDA_OUTPUT_DATA_FORMAT VHDL -section_id eda_simulati
 
 # end ENTITY(vga_pll_0002)
 # ------------------------
-set_global_assignment -name VHDL_FILE common.vhd
-set_global_assignment -name VHDL_FILE nes.vhd
-set_global_assignment -name VHDL_FILE cpu.vhd
-set_global_assignment -name VHDL_FILE ppu.vhd
-set_global_assignment -name VHDL_FILE apu.vhd
-set_global_assignment -name VHDL_FILE vga.vhd
-set_global_assignment -name VHDL_FILE sequencer.vhd
-set_global_assignment -name VHDL_FILE data_path.vhd
-set_global_assignment -name VHDL_FILE periphery_ctrl.vhd
-set_global_assignment -name VHDL_FILE master_ctrl.vhd
-set_global_assignment -name VHDL_FILE i2s.vhd
-set_global_assignment -name VHDL_FILE i2c.vhd
-set_global_assignment -name VHDL_FILE i2c_master.vhd
-set_global_assignment -name VHDL_FILE hex_digit.vhd
-set_global_assignment -name VHDL_FILE biquad.vhd
-set_global_assignment -name QIP_FILE progmem.qip
-set_global_assignment -name QIP_FILE datamem.qip
-set_global_assignment -name QIP_FILE frmmem.qip
-set_global_assignment -name QIP_FILE spritemem.qip
-set_global_assignment -name QIP_FILE soamem.qip
-set_global_assignment -name QIP_FILE videorom.qip
-set_global_assignment -name QIP_FILE videomem.qip
-set_global_assignment -name QIP_FILE master_pll.qip
-set_global_assignment -name SIP_FILE master_pll.sip
-set_global_assignment -name QIP_FILE audio_pll.qip
-set_global_assignment -name SIP_FILE audio_pll.sip
-set_global_assignment -name QIP_FILE vga_pll.qip
-set_global_assignment -name SIP_FILE vga_pll.sip
-set_global_assignment -name QIP_FILE master_reconfig.qip
-set_global_assignment -name SIP_FILE master_reconfig.sip
-set_global_assignment -name HEX_FILE test_videorom.hex
-set_global_assignment -name HEX_FILE test_progmem.hex
 set_instance_assignment -name IO_STANDARD "2.5 V" -to UART_TX
 set_instance_assignment -name IO_STANDARD "2.5 V" -to UART_RX
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_ADDR[12]
@@ -609,4 +577,37 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[21]
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_global_assignment -name VHDL_FILE common.vhd
+set_global_assignment -name VHDL_FILE nes.vhd
+set_global_assignment -name VHDL_FILE cpu.vhd
+set_global_assignment -name VHDL_FILE ppu.vhd
+set_global_assignment -name VHDL_FILE apu.vhd
+set_global_assignment -name VHDL_FILE vga.vhd
+set_global_assignment -name VHDL_FILE sequencer.vhd
+set_global_assignment -name VHDL_FILE data_path.vhd
+set_global_assignment -name VHDL_FILE periphery_ctrl.vhd
+set_global_assignment -name VHDL_FILE master_ctrl.vhd
+set_global_assignment -name VHDL_FILE i2s.vhd
+set_global_assignment -name VHDL_FILE i2c.vhd
+set_global_assignment -name VHDL_FILE i2c_master.vhd
+set_global_assignment -name VHDL_FILE hex_digit.vhd
+set_global_assignment -name VHDL_FILE biquad.vhd
+set_global_assignment -name VHDL_FILE debounce.vhd
+set_global_assignment -name QIP_FILE progmem.qip
+set_global_assignment -name QIP_FILE datamem.qip
+set_global_assignment -name QIP_FILE frmmem.qip
+set_global_assignment -name QIP_FILE spritemem.qip
+set_global_assignment -name QIP_FILE soamem.qip
+set_global_assignment -name QIP_FILE videorom.qip
+set_global_assignment -name QIP_FILE videomem.qip
+set_global_assignment -name QIP_FILE master_pll.qip
+set_global_assignment -name SIP_FILE master_pll.sip
+set_global_assignment -name QIP_FILE audio_pll.qip
+set_global_assignment -name SIP_FILE audio_pll.sip
+set_global_assignment -name QIP_FILE vga_pll.qip
+set_global_assignment -name SIP_FILE vga_pll.sip
+set_global_assignment -name QIP_FILE master_reconfig.qip
+set_global_assignment -name SIP_FILE master_reconfig.sip
+set_global_assignment -name HEX_FILE test_videorom.hex
+set_global_assignment -name HEX_FILE test_progmem.hex
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
