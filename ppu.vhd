@@ -103,6 +103,117 @@ use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 use work.common.all;
 
+entity sprite_memory is
+	port
+	(
+		i_clk : in std_logic;
+		i_clk_enable : in std_logic := '1';
+		i_reset_n : in std_logic := '1';
+		i_addr : in std_logic_vector(8 downto 0);
+		i_data : in std_logic_vector(7 downto 0);
+		i_read_enable : in std_logic := '0';
+		i_write_enable : in std_logic := '0';
+		o_q : out std_logic_vector(7 downto 0)
+	);
+end sprite_memory;
+
+architecture behavioral of sprite_memory is
+	component spritemem is
+		port
+		(
+			address : in std_logic_vector(7 downto 0);
+			clken : in std_logic := '1';
+			clock : in std_logic := '1';
+			data : in std_logic_vector(7 downto 0);
+			wren : in std_logic := '0';
+			q : out std_logic_vector(7 downto 0)
+		);
+	end component;
+	component soamem is
+		port
+		(
+			address : in std_logic_vector(4 downto 0);
+			clken : in std_logic := '1';
+			clock : in std_logic := '1';
+			data : in std_logic_vector(7 downto 0);
+			wren : in std_logic;
+			q : out std_logic_vector(7 downto 0)
+		);
+	end component;
+	
+	signal s_oam_q : std_logic_vector(7 downto 0);
+	signal s_soa_q : std_logic_vector(7 downto 0);
+	signal s_q : std_logic_vector(7 downto 0);
+	signal s_q_d : std_logic_vector(7 downto 0) := (others => '0');
+	signal s_addr_d : std_logic := '0';
+	signal s_read_enable_d : std_logic := '0';
+	
+begin
+
+	oamem: spritemem port map
+	(
+		clock => i_clk,
+		clken => i_clk_enable and not i_addr(8),
+		address => i_addr(7 downto 0),
+		data => i_data,
+		wren => i_write_enable,
+		q => s_oam_q
+	);
+	soam: soamem port map
+	(
+		clock => i_clk,
+		clken => i_clk_enable and i_addr(8),
+		address => i_addr(4 downto 0),
+		data => i_data,
+		wren => i_write_enable,
+		q => s_soa_q
+	);
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_clk_enable = '1' then
+				if i_reset_n = '0' then
+					s_addr_d <= '0';
+					s_read_enable_d <= '0';
+				else
+					s_addr_d <= i_addr(8);
+					s_read_enable_d <= i_read_enable;
+				end if;
+			end if;
+		end if;
+	end process;
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_clk_enable = '1' then
+				if i_reset_n = '0' then
+					s_q_d <= (others => '0');
+				else
+					s_q_d <= s_q;
+				end if;
+			end if;
+		end if;
+	end process;
+	
+	s_q <= s_q_d when s_read_enable_d = '0'
+	       else s_soa_q when s_addr_d = '1'
+			 else s_oam_q;
+			 
+	o_q <= s_q;
+
+end architecture;
+
+
+/*****************************************************************/
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+use ieee.numeric_std.all;
+use work.common.all;
+
 entity ppu is
 	port
 	(
@@ -226,7 +337,7 @@ architecture behavioral of ppu is
 	signal s_ypos : std_logic_vector(7 downto 0);
 	signal s_next_ypos : std_logic_vector(7 downto 0);
 	signal s_cycle : integer range 0 to 340 := 0;
-	signal s_line : integer range 0 to 261 := 261;
+	signal s_line : integer range 0 to 311 := 311;
 	signal s_max_line : integer range 0 to 311 := 261;
 	signal s_new_max_line : integer range 0 to 311;
 	signal s_tile_index : std_logic_vector(7 downto 0);
@@ -309,6 +420,8 @@ architecture behavioral of ppu is
 	signal s_vram_bkg_inc : boolean;
 	signal s_frame_latch : boolean := true;
 	signal s_enable_rendering : boolean;
+	signal s_enable_shortcut : boolean := false;
+	signal s_new_enable_shortcut : boolean;
 	signal s_shortcut_state : boolean;
 	signal s_greyscale : std_logic := '0';
 	signal s_color_emphasize : std_logic_vector(2 downto 0) := "000";
@@ -538,9 +651,11 @@ begin
 		
 			when ntsc =>
 				s_new_max_line <= 261;
+				s_new_enable_shortcut <= true;
 				
 			when pal =>
 				s_new_max_line <= 311;
+				s_new_enable_shortcut <= false;
 			
 		end case;
 	end process;
@@ -552,6 +667,7 @@ begin
 				if i_reset_n = '0' then
 					s_line <= s_new_max_line;
 					s_max_line <= s_new_max_line;
+					s_enable_shortcut <= s_new_enable_shortcut;
 					s_cycle <= 0;
 					s_frame_latch <= true;
 				else
@@ -562,6 +678,7 @@ begin
 							s_line <= 0;
 							s_max_line <= s_new_max_line;
 							s_frame_latch <= not s_frame_latch;
+							s_enable_shortcut <= s_new_enable_shortcut;
 							
 							if s_shortcut_state then
 								s_cycle <= 1;
@@ -1185,7 +1302,7 @@ begin
 									s_soa_access <= '1';
 								end if;
 							else
-								s_soa_access <= '1';
+								s_soa_access <= '0';
 							end if;
 
 					end case;
@@ -1341,7 +1458,7 @@ begin
 	s_perform_oam_write_access <= (s_io_state = oamdata_write) and (s_io_cycle = 1);
 	s_perform_oam_access <= s_perform_oam_write_access;
 	s_enable_rendering <= (s_enable_background = '1') or (s_enable_sprites = '1');
-	s_shortcut_state <= s_frame_latch and s_prescan_line and s_enable_rendering;
+	s_shortcut_state <= s_frame_latch and s_prescan_line and s_enable_rendering and s_enable_shortcut;
 	
 	s_palette_quadrant <= s_vram_addr_v(6) & s_vram_addr_v(1);
 	s_tile_addr <= "0010" & s_vram_addr_v(11 downto 0);

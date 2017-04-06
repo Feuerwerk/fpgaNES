@@ -1091,7 +1091,7 @@ architecture behavioral of nestest is
 	signal s_chr_write_enable : std_logic;
 	signal s_chr_q : std_logic_vector(7 downto 0);
 	signal s_chr_eff_q : std_logic_vector(7 downto 0);
-	signal s_init_counter : natural := 12;
+	signal s_init_counter : natural := 16;
 	signal s_init : std_logic;
 	signal s_reset_n : std_logic;
 

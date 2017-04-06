@@ -30,11 +30,11 @@ architecture behavioral of master_ctrl is
 	signal s_n_counter : std_logic_vector(17 downto 0);
 	signal s_c_counter : std_logic_vector(17 downto 0);
 	signal s_loop_filter_res : std_logic_vector(7 downto 0);
-	signal s_write_count : integer range 0 to 3 := 0;
-	signal s_state : integer range 0 to 9 := 9;
+	signal s_write_count : natural range 0 to 3 := 0;
+	signal s_state : natural range 0 to 9 := 9;
 	signal s_video_mode_active : video_mode_t := pal;
 	signal s_video_mode_new : video_mode_t := pal;
-	signal s_counter : integer range 0 to 10239 := 1023;
+	signal s_counter : natural range 0 to 1023 := 1023;
 
 begin
 
