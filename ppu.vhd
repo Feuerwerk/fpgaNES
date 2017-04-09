@@ -103,117 +103,6 @@ use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 use work.common.all;
 
-entity sprite_memory is
-	port
-	(
-		i_clk : in std_logic;
-		i_clk_enable : in std_logic := '1';
-		i_reset_n : in std_logic := '1';
-		i_addr : in std_logic_vector(8 downto 0);
-		i_data : in std_logic_vector(7 downto 0);
-		i_read_enable : in std_logic := '0';
-		i_write_enable : in std_logic := '0';
-		o_q : out std_logic_vector(7 downto 0)
-	);
-end sprite_memory;
-
-architecture behavioral of sprite_memory is
-	component spritemem is
-		port
-		(
-			address : in std_logic_vector(7 downto 0);
-			clken : in std_logic := '1';
-			clock : in std_logic := '1';
-			data : in std_logic_vector(7 downto 0);
-			wren : in std_logic := '0';
-			q : out std_logic_vector(7 downto 0)
-		);
-	end component;
-	component soamem is
-		port
-		(
-			address : in std_logic_vector(4 downto 0);
-			clken : in std_logic := '1';
-			clock : in std_logic := '1';
-			data : in std_logic_vector(7 downto 0);
-			wren : in std_logic;
-			q : out std_logic_vector(7 downto 0)
-		);
-	end component;
-	
-	signal s_oam_q : std_logic_vector(7 downto 0);
-	signal s_soa_q : std_logic_vector(7 downto 0);
-	signal s_q : std_logic_vector(7 downto 0);
-	signal s_q_d : std_logic_vector(7 downto 0) := (others => '0');
-	signal s_addr_d : std_logic := '0';
-	signal s_read_enable_d : std_logic := '0';
-	
-begin
-
-	oamem: spritemem port map
-	(
-		clock => i_clk,
-		clken => i_clk_enable and not i_addr(8),
-		address => i_addr(7 downto 0),
-		data => i_data,
-		wren => i_write_enable,
-		q => s_oam_q
-	);
-	soam: soamem port map
-	(
-		clock => i_clk,
-		clken => i_clk_enable and i_addr(8),
-		address => i_addr(4 downto 0),
-		data => i_data,
-		wren => i_write_enable,
-		q => s_soa_q
-	);
-	
-	process (i_clk)
-	begin
-		if rising_edge(i_clk) then
-			if i_clk_enable = '1' then
-				if i_reset_n = '0' then
-					s_addr_d <= '0';
-					s_read_enable_d <= '0';
-				else
-					s_addr_d <= i_addr(8);
-					s_read_enable_d <= i_read_enable;
-				end if;
-			end if;
-		end if;
-	end process;
-	
-	process (i_clk)
-	begin
-		if rising_edge(i_clk) then
-			if i_clk_enable = '1' then
-				if i_reset_n = '0' then
-					s_q_d <= (others => '0');
-				else
-					s_q_d <= s_q;
-				end if;
-			end if;
-		end if;
-	end process;
-	
-	s_q <= s_q_d when s_read_enable_d = '0'
-	       else s_soa_q when s_addr_d = '1'
-			 else s_oam_q;
-			 
-	o_q <= s_q;
-
-end architecture;
-
-
-/*****************************************************************/
-
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.std_logic_unsigned.all;
-use ieee.numeric_std.all;
-use work.common.all;
-
 entity ppu is
 	port
 	(
@@ -309,6 +198,7 @@ architecture behavioral of ppu is
 	end record;
 	
 	type io_state_t is (idle, ppuctrl, ppumask, ppustatus, oamaddr, oamdata_read, oamdata_write, ppuscroll_x, ppuscroll_y, ppuaddr_hi, ppuaddr_lo, ppudata_read, ppudata_write);
+	type sprite_memory_t is (oam, soa);
 	type sprite_state_t is (idle, clear1, clear2, ev_y1, ev_y2, ev_tile1, ev_tile2, ev_attr1, ev_attr2, ev_x1, ev_x2, of_y1, of_y2, of_title1, of_title2, of_attr1, of_attr2, of_x1, of_x2, wait1a, wait1b, wait_eol, gf1, gf2, gf3, gf4, ftl1, ftl2, fth1, fth2);
 	type background_state_t is (idle, nt1, nt2, at1, at2, tl1, tl2, th1, th2);
 	type sprite_list_t is array (0 to 7) of sprite_t;
@@ -322,10 +212,17 @@ architecture behavioral of ppu is
 	signal s_io_cycle : integer range 0 to 7 := 0;
 	signal s_io_latch : boolean := true;
 	signal s_sprites : sprite_list_t := (others => NULL_SPRITE);
+	signal s_spr_mem : sprite_memory_t := oam;
+	signal s_spr_mem_d : sprite_memory_t := oam;
+	signal s_oam_clk_enable : std_logic;
 	signal s_oam_addr : std_logic_vector(7 downto 0) := x"00";
-	signal s_oam_write_enable : std_logic := '0';
+	signal s_oam_write_enable : std_logic;
+	signal s_oam_eff_q : std_logic_vector(7 downto 0);
 	signal s_oam_q : std_logic_vector(7 downto 0);
-	signal s_oam_raw_q : std_logic_vector(7 downto 0);
+	signal s_soa_clk_enable : std_logic;	
+	signal s_soa_addr : std_logic_vector(4 downto 0) := (others => '0');
+	signal s_soa_q : std_logic_vector(7 downto 0) := (others => '0');
+	signal s_soa_write_enable : std_logic := '0';
 	signal s_spr_addr : std_logic_vector(15 downto 0) := (others => '0');
 	signal s_bkg_addr : std_logic_vector(15 downto 0) := (others => '0');
 	signal s_spr_read_enable : std_logic := '0';
@@ -343,7 +240,6 @@ architecture behavioral of ppu is
 	signal s_tile_index : std_logic_vector(7 downto 0);
 	signal s_background_half : std_logic := '0';
 	signal s_sprite_half : std_logic := '0';
-	signal s_nametable : std_logic_vector(1 downto 0);
 	signal s_shifter_enable : std_logic := '0';
 	signal s_shifter_load : std_logic := '0';
 	signal s_render : boolean;
@@ -370,11 +266,6 @@ architecture behavioral of ppu is
 	signal s_winning_sprite : sprite_t;
 	signal s_spr_idx : integer range 0 to 7 := 0;
 	signal s_spr_fill : integer range -1 to 7 := -1;
-	signal s_soa_addr : std_logic_vector(4 downto 0) := (others => '0');
-	signal s_soa_q : std_logic_vector(7 downto 0) := (others => '0');
-	signal s_soa_write_enable : std_logic := '0';
-	signal s_soa_access : std_logic := '1';
-	signal s_soa_read_enable_d : boolean := false;
 	signal s_sprite_y : std_logic_vector(8 downto 0) := (others => '0');
 	signal s_sprite_top : std_logic_vector(7 downto 0);
 	signal s_sprite_tile : std_logic_vector(7 downto 0) := (others => '0');
@@ -430,18 +321,18 @@ begin
 	oamem: spritemem port map
 	(
 		clock => i_clk,
-		clken => i_clk_enable,
+		clken => s_oam_clk_enable,
 		address => s_oam_addr,
 		data => s_io_data,
 		wren => s_oam_write_enable,
-		q => s_oam_raw_q
+		q => s_oam_q
 	);
 	soam: soamem port map
 	(
 		clock => i_clk,
-		clken => i_clk_enable and s_soa_access,
+		clken => s_soa_clk_enable,
 		address => s_soa_addr,
-		data => s_oam_q,
+		data => s_oam_eff_q,
 		wren => s_soa_write_enable,
 		q => s_soa_q
 	);
@@ -586,13 +477,18 @@ begin
 						when oamdata_read =>
 							if s_io_cycle = 1 then
 								s_io_state <= idle;
-								s_q <= s_oam_q;
+								
+								if s_spr_mem_d = oam then
+									s_q <= s_oam_eff_q;
+								else
+									s_q <= s_soa_q;
+								end if;
 							else
 								s_io_cycle <= s_io_cycle + 1;
 							end if;
 							
 						when ppustatus =>
-							if s_io_cycle = 1 then
+							if s_io_cycle = 2 then
 								s_io_state <= idle;
 								s_q <= s_vblank & s_sprite_0_hit & s_sprite_overflow & "00000";
 							else
@@ -677,6 +573,7 @@ begin
 						if s_prescan_line then
 							s_line <= 0;
 							s_max_line <= s_new_max_line;
+							
 							s_frame_latch <= not s_frame_latch;
 							s_enable_shortcut <= s_new_enable_shortcut;
 							
@@ -1056,14 +953,13 @@ begin
 			if i_clk_enable = '1' then
 				s_spr_read_enable <= '0';
 				s_spr_fill <= -1;
-				s_soa_access <= '0';
+				s_soa_write_enable <= '0';
 			
 				if i_reset_n = '0' then
 					s_spr_state <= idle;
-					s_soa_access <= '1';
+					s_spr_mem <= soa;
 					s_soa_addr <= "00000";
 					s_oam_addr <= x"00";
-					s_soa_write_enable <= '0';
 					
 					for i in 0 to 7 loop
 						s_sprites(i).tile_low <= x"00";
@@ -1095,21 +991,24 @@ begin
 					case s_spr_state is
 
 						when idle =>
-							s_soa_addr <= "00000";
-						
-							if s_visible_line and ((s_enable_sprites = '1') or (s_enable_background = '1')) then
+							if s_visible_line and s_enable_rendering then
 								s_spr_state <= clear1;
-								s_soa_write_enable <= '1';
+								s_soa_addr <= "00000";
+								s_spr_mem <= oam;
 							else
+								s_spr_mem <= oam;
 								s_spr_state <= wait_eol;
-								s_soa_access <= '1';
 							end if;
 							
 						when clear1 =>
-							s_soa_access <= '1';
+							s_spr_mem <= soa;
+							s_soa_write_enable <= '1';
 							s_spr_state <= clear2;
 
 						when clear2 =>
+							s_soa_addr <= s_soa_addr + "00001";
+							s_spr_mem <= oam;
+
 							if s_soa_addr = "11111" then
 								s_spr_state <= ev_y1;
 								s_new_sprite_0_visible <= false;
@@ -1117,13 +1016,14 @@ begin
 								s_spr_state <= clear1;
 							end if;
 							
-							s_soa_addr <= s_soa_addr + "00001";
-							
 						when ev_y1 =>
-							s_soa_access <= '1';
+							s_spr_mem <= soa;
+							s_soa_write_enable <= '1';
 							s_spr_state <= ev_y2;
 							
 						when ev_y2 =>
+							s_spr_mem <= oam;
+						
 							if s_sprite_online then
 								s_oam_addr <= s_oam_addr + x"01"; -- Adresse für Tile Index
 								s_soa_addr <= s_soa_addr + "00001";
@@ -1136,7 +1036,6 @@ begin
 								s_oam_addr <= s_oam_addr + x"04"; -- Adresse für nächste Y-Position
 							
 								if s_oam_addr = x"fc" then
-									s_soa_write_enable <= '0';
 									s_spr_state <= wait1a;
 								else
 									s_spr_state <= ev_y1;
@@ -1144,45 +1043,52 @@ begin
 							end if;
 							
 						when ev_tile1 =>
-							s_soa_access <= '1';
+							s_spr_mem <= soa;
+							s_soa_write_enable <= '1';
 							s_spr_state <= ev_tile2;
 							
 						when ev_tile2 =>
+							s_spr_mem <= oam;
 							s_oam_addr <= s_oam_addr + x"01"; -- Adresse für Attribute
 							s_soa_addr <= s_soa_addr + "00001";
 							s_spr_state <= ev_attr1;
 							
 						when ev_attr1 =>
-							s_soa_access <= '1';
+							s_spr_mem <= soa;
+							s_soa_write_enable <= '1';
 							s_spr_state <= ev_attr2;
 							
 						when ev_attr2 =>
+							s_spr_mem <= oam;
 							s_oam_addr <= s_oam_addr + x"01"; -- Adresse für X-Position
 							s_soa_addr <= s_soa_addr + "00001";
 							s_spr_state <= ev_x1;
 							
 						when ev_x1 =>
-							s_soa_access <= '1';
+							s_spr_mem <= soa;
+							s_soa_write_enable <= '1';
 							s_spr_state <= ev_x2;
 							
 						when ev_x2 =>
+							s_spr_mem <= oam;
 							s_oam_addr <= s_oam_addr + x"01"; -- Adresse für Y-Position
 							s_soa_addr <= s_soa_addr + "00001";
 							
 							if s_soa_addr = "11111" then
-								s_soa_write_enable <= '0';
 								s_spr_state <= of_y1;
 							elsif s_oam_addr = x"ff" then
-								s_soa_write_enable <= '0';
 								s_spr_state <= wait1a;
 							else
 								s_spr_state <= ev_y1;
 							end if;
 			
 						when of_y1 =>
+							-- @todo hier kein s_soa_cs ?
 							s_spr_state <= of_y2;
 							
 						when of_y2 =>
+							s_spr_mem <= oam;
+						
 							if s_sprite_online then
 								s_sprite_overflow <= '1';
 								s_oam_addr <= s_oam_addr + x"01"; -- Adresse für Tile Index
@@ -1207,50 +1113,54 @@ begin
 							end if;
 								
 						when of_title1 =>
+							-- @todo hier kein s_soa_cs ?
 							s_spr_state <= of_title2;
 							
 						when of_title2 =>
+							s_spr_mem <= oam;
 							s_oam_addr <= s_oam_addr + x"01"; -- Adresse für Attr Index
 							s_spr_state <= of_attr1;
 							
 						when of_attr1 =>
+							-- @todo hier kein s_soa_cs ?
 							s_spr_state <= of_attr2;
 							
 						when of_attr2 =>
+							s_spr_mem <= oam;
 							s_oam_addr <= s_oam_addr + x"01"; -- Adresse für X-Position
 							s_spr_state <= of_x1;
 							
 						when of_x1 =>
+							-- @todo hier kein s_soa_cs ?
 							s_spr_state <= of_x2;
 							
 						when of_x2 =>
+							s_spr_mem <= oam;
 							s_oam_addr <= s_oam_addr + x"01"; -- Adresse für Y-Position
 							s_spr_state <= of_y1;
 							
 						when wait1a =>
-							s_soa_access <= '1';
+							s_spr_mem <= soa;
 							s_spr_state <= wait1b;
 						
 						when wait1b =>
 							s_oam_addr <= s_oam_addr + x"04";
+							s_spr_mem <= oam;
 							s_spr_state <= wait1a;
 							
 						when gf1 =>
 							s_spr_state <= gf2;
 							s_soa_addr <= s_soa_addr + "00001"; -- Adresse für Tile Index
-							s_soa_access <= '1';
 						
 						when gf2 =>
 							s_sprite_y <= ('0' & s_ypos) - ('0' & s_soa_q); -- Y-Position
 							s_spr_state <= gf3;
 							s_soa_addr <= s_soa_addr + "00001"; -- Adresse für Attribute
-							s_soa_access <= '1';
 						
 						when gf3 =>
 							s_sprite_tile <= s_soa_q; -- Tile Index
 							s_spr_state <= gf4;
 							s_soa_addr <= s_soa_addr + "00001"; -- Adresse für X-Position
-							s_soa_access <= '1';
 						
 						when gf4 =>
 							s_spr_addr <= "000" & s_next_tile_addr;
@@ -1258,51 +1168,45 @@ begin
 							s_sprites(s_spr_idx).palette <= s_soa_q(1 downto 0); -- Attribute
 							s_sprites(s_spr_idx).priority <= s_soa_q(5);
 							s_sprite_flip_horizontal <= s_soa_q(6);
-							s_soa_access <= '1';
 							
 						when ftl1 =>
 							s_spr_state <= ftl2;
 							s_sprites(s_spr_idx).x <= s_soa_q; -- X-Position
 							s_spr_read_enable <= '1';
-							s_soa_access <= '1';
 							
 						when ftl2 =>
 							s_spr_addr(3) <= '1'; -- +8 Bytes
 							s_spr_state <= fth1;
-							s_soa_access <= '1';
 							
 						when fth1 =>
 							s_sprites(s_spr_idx).tile_low <= s_tile_data;
 							s_oam_addr <= x"00";
 							s_spr_state <= fth2;
 							s_spr_read_enable <= '1';
-							s_soa_access <= '1';
 							
 						when fth2 =>
 							s_spr_fill <= s_spr_idx;
+							s_spr_mem <= soa;
 						
 							if s_soa_addr = "11111" then
 								s_spr_state <= wait_eol;
 								s_soa_addr <= "00000";
-								s_soa_access <= '1';
 							else
 								s_spr_idx <= s_spr_idx + 1;
 								s_spr_state <= gf1;
 								s_soa_addr <= s_soa_addr + "00001"; -- Adresse für Y-Position
-								s_soa_access <= '1';
 							end if;
 							
 						when wait_eol =>
 							if s_cycle = 340 then
 								if s_shortcut_state then
 									s_spr_state <= clear1;
-									s_soa_write_enable <= '1';
+									s_soa_addr <= "00000";
+									s_spr_mem <= oam;
 								else
 									s_spr_state <= idle;
-									s_soa_access <= '1';
+									s_spr_mem <= soa;
 								end if;
-							else
-								s_soa_access <= '0';
 							end if;
 
 					end case;
@@ -1312,7 +1216,7 @@ begin
 						s_sprite_0_visible <= s_new_sprite_0_visible;
 						s_spr_state <= gf1;
 						s_soa_addr <= "00000"; -- Adresse für Y-Position
-						s_soa_access <= '1';
+						s_spr_mem <= soa;
 						
 						for i in 0 to 7 loop
 							s_sprites(i).tile_low <= x"00";
@@ -1324,15 +1228,15 @@ begin
 			end if;
 		end if;
 	end process;
-	
+
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if i_clk_enable = '1' then
-				if (i_reset_n = '0') or (s_soa_access = '0') or (s_soa_write_enable = '1') then
-					s_soa_read_enable_d <= false;
+				if i_reset_n = '0' then
+					s_spr_mem_d <= oam;
 				else
-					s_soa_read_enable_d <= true;
+					s_spr_mem_d <= s_spr_mem;
 				end if;
 			end if;
 		end if;
@@ -1348,7 +1252,7 @@ begin
 					s_vblank <= '0';
 				elsif s_prescan_line and (s_cycle = 1) then
 					s_vblank <= '0';
-				elsif (s_io_state = ppustatus) and (s_io_cycle = 1) then
+				elsif (s_io_state = ppustatus) and (s_io_cycle = 2) then
 					s_vblank <= '0'; -- VBlank zurücksetzen wenn PPUSTATUS gelesen wird
 				elsif (s_line = 241) and (s_cycle = 1) then
 					s_vblank <= '1';
@@ -1416,7 +1320,7 @@ begin
 							 else '1' & s_winning_sprite.palette & s_winning_sprite.pixel when (s_winning_sprite.pixel /= "00")
 							 else "00000";
 
-	s_sprite_top <= x"ff" when s_oam_q = x"ff" else s_oam_q + x"01";
+	s_sprite_top <= x"ff" when s_oam_eff_q = x"ff" else s_oam_eff_q + x"01";
 	s_sprite_line_test_width <= x"08" when s_big_sprites = '0' else x"10";
 	s_sprite_line_lower_test <= s_next_ypos >= s_sprite_top;
 	s_sprite_line_upper_test <= s_next_ypos < (s_sprite_top + s_sprite_line_test_width);
@@ -1454,9 +1358,11 @@ begin
 	s_vram_bkg_inc <= std_logic_vector(to_unsigned(s_cycle - 1, 3)) = "110";
 	s_out_color <= s_palette_color and 6x"30" when s_greyscale = '1' else s_palette_color;
 	s_out_data <= s_color_emphasize & s_out_color;
+	
 	s_oam_write_enable <= '1' when s_perform_oam_write_access else '0';
 	s_perform_oam_write_access <= (s_io_state = oamdata_write) and (s_io_cycle = 1);
 	s_perform_oam_access <= s_perform_oam_write_access;
+	
 	s_enable_rendering <= (s_enable_background = '1') or (s_enable_sprites = '1');
 	s_shortcut_state <= s_frame_latch and s_prescan_line and s_enable_rendering and s_enable_shortcut;
 	
@@ -1471,9 +1377,9 @@ begin
 	s_palette_color <= s_palette_mem(to_pal_idx(s_palette_index))(5 downto 0);
 	s_palette_access <= s_vram_addr_v(14 downto 8) = 7x"3f";
 	
-	s_oam_q <= x"ff" when (s_spr_state = clear1) or (s_spr_state = clear2)
-	           else s_soa_q when s_soa_read_enable_d
-				  else s_oam_raw_q;
+	s_oam_eff_q <= x"ff" when (s_spr_state = clear1) or (s_spr_state = clear2) else s_oam_q;
+	s_oam_clk_enable <= i_clk_enable when s_spr_mem = oam else '0';
+	s_soa_clk_enable <= i_clk_enable when s_spr_mem = soa else '0';
 	
 	o_q <= s_q;
 	o_int_n <= s_vblank nand s_enable_nmi;

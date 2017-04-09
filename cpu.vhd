@@ -751,7 +751,8 @@ entity cpu is
 	port
 	(
 		i_clk : in std_logic;
-		i_clk_enable : in std_logic := '1';
+		i_clk_p_enable : in std_logic := '1';
+		i_clk_n_enable : in std_logic := '0';
 		i_ready : in std_logic := '1';
 		i_reset_n : in std_logic := '1';
 		i_int_n : in std_logic := '1';
@@ -811,9 +812,6 @@ architecture behavioral of cpu is
 	end component;
 	
 	constant BRK_OPCODE : std_logic_vector(7 downto 0) := x"00";
-	constant RST_OPCODE : std_logic_vector(7 downto 0) := x"02";
-	constant INT_OPCODE : std_logic_vector(7 downto 0) := x"03";
-	constant NMI_OPCODE : std_logic_vector(7 downto 0) := x"04";
 	
 	type opcode_override_t is (nop, rst, int, nmi);
 
@@ -856,9 +854,13 @@ architecture behavioral of cpu is
 	signal s_ctrl_op : ctrl_op_t;
 	signal s_alu_a_op : alu_inp_t;
 	signal s_alu_b_op : alu_inp_t;
-	signal s_int_active : boolean;
+	signal s_int_active : boolean := false;
 	signal s_nmi_active : boolean := false;
 	signal s_nmi_last : std_logic := '1';
+	signal s_nmi_trigger : std_logic;
+	signal s_nmi_delay : std_logic_vector(1 downto 0);
+	signal s_int_trigger : std_logic;
+	signal s_int_delay : std_logic_vector(2 downto 0);
 	signal s_clk_enable : std_logic;
 	signal s_ready_d : std_logic := '1';
 	signal s_sync_edge : std_logic;
@@ -903,7 +905,7 @@ begin
 	
 	-- Clock Divider & Internal Clock
 	
-	s_clk_enable <= i_clk_enable and i_ready;
+	s_clk_enable <= i_clk_p_enable and i_ready;
 	
 	-- Memory-Access
 	-- Last read memory value is stored if ready-signal drop to 0 and is available until ready returns to 1
@@ -913,7 +915,7 @@ begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_mem_q_d <= x"00";
-			elsif (i_clk_enable = '1') and (s_ready_d = '1') then
+			elsif (i_clk_p_enable = '1') and (s_ready_d = '1') then
 				s_mem_q_d <= i_mem_q;
 			end if;
 		end if;
@@ -928,7 +930,7 @@ begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_ready_d <= '1';
-			elsif i_clk_enable = '1' then
+			elsif i_clk_p_enable = '1' then
 				s_ready_d <= i_ready;
 			end if;
 		end if;
@@ -986,21 +988,40 @@ begin
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
-				if i_reset_n = '0' then
-					s_nmi_active <= false;
-				elsif (s_nmi_last = '1') and (i_nmi_n = '0') then
-					s_nmi_active <= true;
-				elsif (s_opcode_override = nmi) then
+			if i_reset_n = '0' then
+				s_nmi_active <= false;
+				s_nmi_delay <= (others => '0');
+				s_nmi_active <= false;
+				s_nmi_last <= '1';
+			elsif s_clk_enable = '1' then
+				if (s_opcode_override = nmi) then
 					s_nmi_active <= false;
 				end if;
-				
-				s_nmi_last <= i_nmi_n;
+			elsif i_clk_n_enable = '1' then
+				if s_nmi_delay(1) = '1' then
+					s_nmi_active <= true;
+				end if;
+			
+				s_nmi_delay <= s_nmi_delay(0) & s_nmi_trigger;
+				s_nmi_last <= i_nmi_n;				
 			end if;
 		end if;
 	end process;
 	
-	s_int_active <= (i_int_n = '0') and (s_flags.i = '0');
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_reset_n = '0' then
+				s_int_delay <= (others => '0');
+			elsif i_clk_n_enable = '1' then
+				s_int_delay <= s_int_delay(1 downto 0) & s_int_trigger;
+			end if;
+		end if;
+	end process;
+	
+	s_int_active <= s_int_delay(2) = '1';
+	s_int_trigger <= not i_int_n and not s_flags.i;
+	s_nmi_trigger <= s_nmi_last and not i_nmi_n;
 	
 	-- Cycle
 
