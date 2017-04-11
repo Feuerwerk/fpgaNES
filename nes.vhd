@@ -733,7 +733,6 @@ architecture behavioral of nescore is
 	signal s_prg_latch : std_logic_vector(7 downto 0) := (others => '0');
 	signal s_cpu_divider : natural range 0 to 31 := 31;
 	signal s_ppu_divider : natural range 0 to 31 := 31;
-	signal s_cpu_middle : natural range 0 to 31 := 31;
 	signal s_cpu_counter : natural range 0 to 31 := 0;
 	signal s_ppu_counter : natural range 0 to 31 := 0;
 	signal s_sync_start : natural range 0 to 31 := 0;
@@ -885,7 +884,6 @@ begin
 		if rising_edge(i_clk) then
 			if (i_reset_n = '0') or (s_last_cpu_cycle and s_last_ppu_cycle) then
 				s_cpu_divider <= s_next_cpu_divider;
-				s_cpu_middle <= s_next_cpu_divider / 2;
 				s_ppu_divider <= s_next_ppu_divider;
 				s_sync_start <= s_next_sync_start;
 				s_sync_stop <= s_next_sync_stop;
@@ -984,7 +982,7 @@ begin
 	end process;
 	
 	s_last_cpu_cycle <= s_cpu_counter = s_cpu_divider - 1;
-	s_mid_cpu_cycle <= s_cpu_counter = s_cpu_middle - 1;
+	s_mid_cpu_cycle <= s_cpu_counter = s_sync_start;
 	s_last_ppu_cycle <= s_ppu_counter = s_ppu_divider - 1;
 	
 	s_cpu_clk_p_enable <= '1' when s_last_cpu_cycle else '0';
@@ -1113,7 +1111,7 @@ begin
 		i_chr_q => s_chr_q,
 		i_ciram_ce_n => not s_chr_addr(13),
 		i_ciram_a10 => s_chr_addr(10),
-		i_video_mode => pal,
+		i_video_mode => ntsc,
 		o_prg_addr => s_prg_addr,
 		o_prg_data => s_prg_data,
 		o_prg_write_enable => s_prg_write_enable,

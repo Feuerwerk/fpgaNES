@@ -205,6 +205,9 @@ architecture behavioral of ppu is
 	type byte_array_t is array (0 to 31) of std_logic_vector(7 downto 0);
 	
 	constant NULL_SPRITE : sprite_t := (x => x"00", tile_low => x"00", tile_high => x"00", priority => '0', palette => "00", pixel => "00");
+	constant PPUSTATUS_READ_CYCLE : integer := 1;
+	constant VBLANK_CLEAR_CYCLE : integer := 1;
+	constant VBLANK_SET_CYCLE : integer := 1;
 
 	signal s_io_state : io_state_t := idle;
 	signal s_io_data : std_logic_vector(7 downto 0) := x"00";
@@ -313,7 +316,7 @@ architecture behavioral of ppu is
 	signal s_enable_rendering : boolean;
 	signal s_enable_shortcut : boolean := false;
 	signal s_new_enable_shortcut : boolean;
-	signal s_shortcut_state : boolean;
+	signal s_skip_dot : boolean;
 	signal s_greyscale : std_logic := '0';
 	signal s_color_emphasize : std_logic_vector(2 downto 0) := "000";
 
@@ -488,7 +491,7 @@ begin
 							end if;
 							
 						when ppustatus =>
-							if s_io_cycle = 2 then
+							if s_io_cycle = PPUSTATUS_READ_CYCLE then
 								s_io_state <= idle;
 								s_q <= s_vblank & s_sprite_0_hit & s_sprite_overflow & "00000";
 							else
@@ -577,7 +580,7 @@ begin
 							s_frame_latch <= not s_frame_latch;
 							s_enable_shortcut <= s_new_enable_shortcut;
 							
-							if s_shortcut_state then
+							if s_skip_dot then
 								s_cycle <= 1;
 							end if;
 						else
@@ -890,7 +893,7 @@ begin
 							if s_cycle /= 340 then
 								s_bkg_state <= tl1;
 								s_bkg_addr <= s_tile_lo_addr;
-							elsif s_shortcut_state then
+							elsif s_skip_dot then
 								s_bkg_state <= nt1;
 								s_bkg_addr <= s_tile_addr;
 							else
@@ -1199,7 +1202,7 @@ begin
 							
 						when wait_eol =>
 							if s_cycle = 340 then
-								if s_shortcut_state then
+								if s_skip_dot then
 									s_spr_state <= clear1;
 									s_soa_addr <= "00000";
 									s_spr_mem <= oam;
@@ -1250,11 +1253,11 @@ begin
 			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_vblank <= '0';
-				elsif s_prescan_line and (s_cycle = 1) then
+				elsif s_prescan_line and (s_cycle = VBLANK_CLEAR_CYCLE) then
 					s_vblank <= '0';
-				elsif (s_io_state = ppustatus) and (s_io_cycle = 2) then
+				elsif (s_io_state = ppustatus) and (s_io_cycle = PPUSTATUS_READ_CYCLE) then
 					s_vblank <= '0'; -- VBlank zurücksetzen wenn PPUSTATUS gelesen wird
-				elsif (s_line = 241) and (s_cycle = 1) then
+				elsif (s_line = 241) and (s_cycle = VBLANK_SET_CYCLE) then
 					s_vblank <= '1';
 				end if;
 			end if;
@@ -1364,7 +1367,7 @@ begin
 	s_perform_oam_access <= s_perform_oam_write_access;
 	
 	s_enable_rendering <= (s_enable_background = '1') or (s_enable_sprites = '1');
-	s_shortcut_state <= s_frame_latch and s_prescan_line and s_enable_rendering and s_enable_shortcut;
+	s_skip_dot <= s_frame_latch and s_prescan_line and s_enable_rendering and s_enable_shortcut;
 	
 	s_palette_quadrant <= s_vram_addr_v(6) & s_vram_addr_v(1);
 	s_tile_addr <= "0010" & s_vram_addr_v(11 downto 0);

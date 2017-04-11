@@ -858,7 +858,7 @@ architecture behavioral of cpu is
 	signal s_nmi_active : boolean := false;
 	signal s_nmi_last : std_logic := '1';
 	signal s_nmi_trigger : std_logic;
-	signal s_nmi_delay : std_logic_vector(1 downto 0);
+	signal s_nmi_trigger_d : std_logic := '0';
 	signal s_int_trigger : std_logic;
 	signal s_int_delay : std_logic_vector(2 downto 0);
 	signal s_clk_enable : std_logic;
@@ -990,7 +990,7 @@ begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_nmi_active <= false;
-				s_nmi_delay <= (others => '0');
+				s_nmi_trigger_d <= '0';
 				s_nmi_active <= false;
 				s_nmi_last <= '1';
 			elsif s_clk_enable = '1' then
@@ -998,12 +998,12 @@ begin
 					s_nmi_active <= false;
 				end if;
 			elsif i_clk_n_enable = '1' then
-				if s_nmi_delay(1) = '1' then
+				if s_nmi_trigger_d = '1' then
 					s_nmi_active <= true;
 				end if;
 			
-				s_nmi_delay <= s_nmi_delay(0) & s_nmi_trigger;
-				s_nmi_last <= i_nmi_n;				
+				s_nmi_trigger_d <= s_nmi_trigger;
+				s_nmi_last <= i_nmi_n;
 			end if;
 		end if;
 	end process;
