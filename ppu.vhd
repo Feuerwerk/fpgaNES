@@ -316,9 +316,11 @@ architecture behavioral of ppu is
 	signal s_enable_rendering : boolean;
 	signal s_enable_shortcut : boolean := false;
 	signal s_new_enable_shortcut : boolean;
-	signal s_skip_dot : boolean;
 	signal s_greyscale : std_logic := '0';
 	signal s_color_emphasize : std_logic_vector(2 downto 0) := "000";
+	signal s_skip_dot : boolean;
+	signal s_skip_gurke : boolean := false;
+	signal s_last_cycle : boolean;
 
 begin
 	oamem: spritemem port map
@@ -570,7 +572,7 @@ begin
 					s_cycle <= 0;
 					s_frame_latch <= true;
 				else
-					if s_cycle = 340 then
+					if s_last_cycle then
 						s_cycle <= 0;
 						
 						if s_prescan_line then
@@ -589,6 +591,21 @@ begin
 					else
 						s_cycle <= s_cycle + 1;
 					end if;
+				end if;
+			end if;
+		end if;
+	end process;
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if i_clk_enable = '1' then
+				if i_reset_n = '0' then
+					s_skip_dot <= false;
+				elsif s_prescan_line and s_last_cycle then
+					s_skip_dot <= false;
+				elsif s_prescan_line and (s_cycle = 338) and s_frame_latch and s_enable_rendering and s_enable_shortcut then
+					s_skip_dot <= true;
 				end if;
 			end if;
 		end if;
@@ -890,7 +907,7 @@ begin
 							s_bkg_read_enable <= '1';
 							
 						when at2 =>
-							if s_cycle /= 340 then
+							if not s_last_cycle then
 								s_bkg_state <= tl1;
 								s_bkg_addr <= s_tile_lo_addr;
 							elsif s_skip_dot then
@@ -1201,7 +1218,7 @@ begin
 							end if;
 							
 						when wait_eol =>
-							if s_cycle = 340 then
+							if s_last_cycle then
 								if s_skip_dot then
 									s_spr_state <= clear1;
 									s_soa_addr <= "00000";
@@ -1357,6 +1374,7 @@ begin
 	s_visible_line <= s_line < 240;
 	s_prescan_line <= s_line = s_max_line;
 	s_visible_or_prescan_line <= s_visible_line or s_prescan_line;
+	s_last_cycle <= s_cycle = 340;
 	s_hblank_cycle <= (s_cycle > 256) and (s_cycle < 321);
 	s_vram_bkg_inc <= std_logic_vector(to_unsigned(s_cycle - 1, 3)) = "110";
 	s_out_color <= s_palette_color and 6x"30" when s_greyscale = '1' else s_palette_color;
@@ -1367,7 +1385,6 @@ begin
 	s_perform_oam_access <= s_perform_oam_write_access;
 	
 	s_enable_rendering <= (s_enable_background = '1') or (s_enable_sprites = '1');
-	s_skip_dot <= s_frame_latch and s_prescan_line and s_enable_rendering and s_enable_shortcut;
 	
 	s_palette_quadrant <= s_vram_addr_v(6) & s_vram_addr_v(1);
 	s_tile_addr <= "0010" & s_vram_addr_v(11 downto 0);
