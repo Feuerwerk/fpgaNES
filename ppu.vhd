@@ -208,6 +208,8 @@ architecture behavioral of ppu is
 	constant PPUSTATUS_READ_CYCLE : integer := 1;
 	constant VBLANK_CLEAR_CYCLE : integer := 1;
 	constant VBLANK_SET_CYCLE : integer := 1;
+	constant SPR0HIT_CLEAR_CYCLE : integer := 0;
+	constant SPROVFW_CLEAR_CYCLE : integer := 3;
 
 	signal s_io_state : io_state_t := idle;
 	signal s_io_data : std_logic_vector(7 downto 0) := x"00";
@@ -235,7 +237,6 @@ architecture behavioral of ppu is
 	signal s_video_write_enable : std_logic;
 	signal s_xpos : std_logic_vector(7 downto 0);
 	signal s_ypos : std_logic_vector(7 downto 0);
-	signal s_next_ypos : std_logic_vector(7 downto 0);
 	signal s_cycle : integer range 0 to 340 := 0;
 	signal s_line : integer range 0 to 311 := 311;
 	signal s_max_line : integer range 0 to 311 := 261;
@@ -270,10 +271,8 @@ architecture behavioral of ppu is
 	signal s_spr_idx : integer range 0 to 7 := 0;
 	signal s_spr_fill : integer range -1 to 7 := -1;
 	signal s_sprite_y : std_logic_vector(8 downto 0) := (others => '0');
-	signal s_sprite_top : std_logic_vector(7 downto 0);
 	signal s_sprite_tile : std_logic_vector(7 downto 0) := (others => '0');
 	signal s_sprite_disable : std_logic;
-	signal s_sprite_0_trigger : boolean := false;
 	signal s_sprite_0_hit : std_logic := '0';
 	signal s_sprite_0_visible : boolean := false;
 	signal s_new_sprite_0_visible : boolean := false;
@@ -288,7 +287,7 @@ architecture behavioral of ppu is
 	signal s_sprite_online : boolean;
 	signal s_sprite_line_lower_test : boolean;
 	signal s_sprite_line_upper_test : boolean;
-	signal s_sprite_line_test_width : std_logic_vector(7 downto 0);
+	signal s_sprite_line_test_height : std_logic_vector(7 downto 0);
 	signal s_inner_tile_pos : std_logic_vector(3 downto 0);
 	signal s_next_tile_addr : std_logic_vector(12 downto 0);
 	signal s_tile_addr : std_logic_vector(15 downto 0);
@@ -319,7 +318,6 @@ architecture behavioral of ppu is
 	signal s_greyscale : std_logic := '0';
 	signal s_color_emphasize : std_logic_vector(2 downto 0) := "000";
 	signal s_skip_dot : boolean;
-	signal s_skip_gurke : boolean := false;
 	signal s_last_cycle : boolean;
 
 begin
@@ -999,7 +997,7 @@ begin
 					end if;
 					
 					-- Sprite Overflow zu Beginn eines neuen Frames zurücksetzen
-					if s_prescan_line and (s_cycle = 1) then
+					if s_prescan_line and (s_cycle = SPROVFW_CLEAR_CYCLE) then
 						s_sprite_overflow <= '0';
 					end if;
 					
@@ -1103,7 +1101,6 @@ begin
 							end if;
 			
 						when of_y1 =>
-							-- @todo hier kein s_soa_cs ?
 							s_spr_state <= of_y2;
 							
 						when of_y2 =>
@@ -1133,7 +1130,6 @@ begin
 							end if;
 								
 						when of_title1 =>
-							-- @todo hier kein s_soa_cs ?
 							s_spr_state <= of_title2;
 							
 						when of_title2 =>
@@ -1142,7 +1138,6 @@ begin
 							s_spr_state <= of_attr1;
 							
 						when of_attr1 =>
-							-- @todo hier kein s_soa_cs ?
 							s_spr_state <= of_attr2;
 							
 						when of_attr2 =>
@@ -1151,7 +1146,6 @@ begin
 							s_spr_state <= of_x1;
 							
 						when of_x1 =>
-							-- @todo hier kein s_soa_cs ?
 							s_spr_state <= of_x2;
 							
 						when of_x2 =>
@@ -1231,9 +1225,13 @@ begin
 
 					end case;
 					
+					if s_cycle = 256 then
+						s_sprite_0_visible <= s_new_sprite_0_visible;
+						s_new_sprite_0_visible <= false;
+					end if;
+					
 					if (s_cycle = 256) and (s_spr_state /= wait_eol) then
 						s_spr_idx <= 0;
-						s_sprite_0_visible <= s_new_sprite_0_visible;
 						s_spr_state <= gf1;
 						s_soa_addr <= "00000"; -- Adresse für Y-Position
 						s_spr_mem <= soa;
@@ -1287,20 +1285,14 @@ begin
 	begin
 		if rising_edge(i_clk) then
 			if i_clk_enable = '1' then
-				s_sprite_0_trigger <= false;
-			
 				if i_reset_n = '0' then
 					s_sprite_0_hit <= '0';
 				else
-					if s_sprite_0_trigger then
-						s_sprite_0_hit <= '1';
-					end if;
-				
 					if s_visible_line and (s_cycle >= 1) and (s_cycle < 256) then -- Es ist Absicht, dass hier nicht von 1 - 256 gegangen wird
 						if s_sprite_0_visible and (s_sprites(0).pixel /= "00") and (s_background_pixel /= "00") then
-							s_sprite_0_trigger <= true;
+							s_sprite_0_hit <= '1';
 						end if;
-					elsif s_prescan_line and (s_cycle = 1) then
+					elsif s_prescan_line and (s_cycle = SPR0HIT_CLEAR_CYCLE) then
 						s_sprite_0_hit <= '0';
 					end if;
 				end if;
@@ -1340,10 +1332,9 @@ begin
 							 else '1' & s_winning_sprite.palette & s_winning_sprite.pixel when (s_winning_sprite.pixel /= "00")
 							 else "00000";
 
-	s_sprite_top <= x"ff" when s_oam_eff_q = x"ff" else s_oam_eff_q + x"01";
-	s_sprite_line_test_width <= x"08" when s_big_sprites = '0' else x"10";
-	s_sprite_line_lower_test <= s_next_ypos >= s_sprite_top;
-	s_sprite_line_upper_test <= s_next_ypos < (s_sprite_top + s_sprite_line_test_width);
+	s_sprite_line_test_height <= x"08" when s_big_sprites = '0' else x"10";
+	s_sprite_line_lower_test <= s_ypos >= s_oam_eff_q;
+	s_sprite_line_upper_test <= ('0' & s_ypos) < (('0' & s_oam_eff_q) + ('0' & s_sprite_line_test_height));
 	s_sprite_online <= s_sprite_line_lower_test and s_sprite_line_upper_test;
 	s_sprite_disable <= s_sprite_y(8) or s_sprite_y(7) or s_sprite_y(6) or s_sprite_y(5) or s_sprite_y(4);
 
@@ -1368,7 +1359,6 @@ begin
 					 
 	s_xpos <= std_logic_vector(to_unsigned(s_cycle - 1, 8)) when s_render else x"ff";
 	s_ypos <= std_logic_vector(to_unsigned(s_line, 8));
-	s_next_ypos <= x"00" when s_line >= 239 else std_logic_vector(to_unsigned(s_line, 8)) + x"01";
 	s_out_write_enable <= '1' when s_visible_line and s_render else '0';
 	s_render <= (s_cycle >= 1) and (s_cycle < 257);
 	s_visible_line <= s_line < 240;
