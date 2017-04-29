@@ -205,11 +205,13 @@ architecture behavioral of ppu is
 	type byte_array_t is array (0 to 31) of std_logic_vector(7 downto 0);
 	
 	constant NULL_SPRITE : sprite_t := (x => x"00", tile_low => x"00", tile_high => x"00", priority => '0', palette => "00", pixel => "00");
-	constant PPUSTATUS_READ_CYCLE : integer := 1;
-	constant VBLANK_CLEAR_CYCLE : integer := 1;
+	constant SKIP_DOT_CYCLE : integer := 339;
+	constant ENABLE_NMI_WRITE_CYCLE : integer := 0;
+	constant PPUSTATUS_READ_CYCLE : integer := 0;
 	constant VBLANK_SET_CYCLE : integer := 1;
+	constant VBLANK_CLEAR_CYCLE : integer := 1;
 	constant SPR0HIT_CLEAR_CYCLE : integer := 0;
-	constant SPROVFW_CLEAR_CYCLE : integer := 3;
+	constant SPROVFW_CLEAR_CYCLE : integer := 1;
 
 	signal s_io_state : io_state_t := idle;
 	signal s_io_data : std_logic_vector(7 downto 0) := x"00";
@@ -491,10 +493,13 @@ begin
 							end if;
 							
 						when ppustatus =>
-							if s_io_cycle = PPUSTATUS_READ_CYCLE then
+							if s_io_cycle = 7 then
 								s_io_state <= idle;
-								s_q <= s_vblank & s_sprite_0_hit & s_sprite_overflow & "00000";
 							else
+								if s_io_cycle = PPUSTATUS_READ_CYCLE then
+									s_q <= s_vblank & s_sprite_0_hit & s_sprite_overflow & "00000";
+								end if;
+
 								s_io_cycle <= s_io_cycle + 1;
 							end if;
 							
@@ -602,7 +607,7 @@ begin
 					s_skip_dot <= false;
 				elsif s_prescan_line and s_last_cycle then
 					s_skip_dot <= false;
-				elsif s_prescan_line and (s_cycle = 338) and s_frame_latch and s_enable_rendering and s_enable_shortcut then
+				elsif s_prescan_line and (s_cycle = SKIP_DOT_CYCLE) and s_frame_latch and s_enable_rendering and s_enable_shortcut then
 					s_skip_dot <= true;
 				end if;
 			end if;
@@ -757,7 +762,7 @@ begin
 			if i_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_enable_nmi <= '0';
-				elsif (s_io_state = ppuctrl) and (s_io_cycle = 1) then
+				elsif (s_io_state = ppuctrl) and (s_io_cycle = ENABLE_NMI_WRITE_CYCLE) then
 					s_enable_nmi <= s_io_data(7);
 				end if;
 			end if;
