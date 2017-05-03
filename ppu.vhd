@@ -202,7 +202,7 @@ architecture behavioral of ppu is
 	type sprite_state_t is (idle, clear1, clear2, ev_y1, ev_y2, ev_tile1, ev_tile2, ev_attr1, ev_attr2, ev_x1, ev_x2, of_y1, of_y2, of_title1, of_title2, of_attr1, of_attr2, of_x1, of_x2, wait1a, wait1b, wait_eol, gf1, gf2, gf3, gf4, ftl1, ftl2, fth1, fth2);
 	type background_state_t is (idle, nt1, nt2, at1, at2, tl1, tl2, th1, th2);
 	type sprite_list_t is array (0 to 7) of sprite_t;
-	type byte_array_t is array (0 to 31) of std_logic_vector(7 downto 0);
+	type byte_array_t is array (0 to 31) of std_logic_vector(5 downto 0);
 	
 	constant NULL_SPRITE : sprite_t := (x => x"00", tile_low => x"00", tile_high => x"00", priority => '0', palette => "00", pixel => "00");
 	constant SKIP_DOT_CYCLE : integer := 339;
@@ -212,6 +212,9 @@ architecture behavioral of ppu is
 	constant VBLANK_CLEAR_CYCLE : integer := 1;
 	constant SPR0HIT_CLEAR_CYCLE : integer := 0;
 	constant SPROVFW_CLEAR_CYCLE : integer := 1;
+	constant MAX_DECAY : integer := 3192000;
+	
+	type decay_array_t is array (0 to 7) of integer range 0 to MAX_DECAY;
 
 	signal s_io_state : io_state_t := idle;
 	signal s_io_data : std_logic_vector(7 downto 0) := x"00";
@@ -309,7 +312,7 @@ architecture behavioral of ppu is
 	signal s_palette_access : boolean;
 	signal s_palette_index : std_logic_vector(4 downto 0);
 	signal s_palette_quadrant : std_logic_vector(1 downto 0);
-	signal s_palette_mem : byte_array_t := ( x"09", x"01", x"00", x"01", x"00", x"02", x"02", x"0D", x"08", x"10", x"08", x"24", x"00", x"00", x"04", x"2C", x"09", x"01", x"34", x"03", x"00", x"04", x"00", x"14", x"08", x"3A", x"00", x"02", x"00", x"20", x"2C", x"08" );
+	signal s_palette_mem : byte_array_t := ( 6x"09", 6x"01", 6x"00", 6x"01", 6x"00", 6x"02", 6x"02", 6x"0D", 6x"08", 6x"10", 6x"08", 6x"24", 6x"00", 6x"00", 6x"04", 6x"2C", 6x"09", 6x"01", 6x"34", 6x"03", 6x"00", 6x"04", 6x"00", 6x"14", 6x"08", 6x"3A", 6x"00", 6x"02", 6x"00", 6x"20", 6x"2C", 6x"08" );
 	signal s_hblank_cycle : boolean;
 	signal s_first_col_n : boolean;
 	signal s_vram_bkg_inc : boolean;
@@ -321,14 +324,18 @@ architecture behavioral of ppu is
 	signal s_color_emphasize : std_logic_vector(2 downto 0) := "000";
 	signal s_skip_dot : boolean;
 	signal s_last_cycle : boolean;
+	signal s_q_decay : decay_array_t := (others => 0);
+	signal s_decay_mask : std_logic_vector(7 downto 0) := (others => '0');
+	signal s_oam_data : std_logic_vector(7 downto 0);
 
 begin
+	
 	oamem: spritemem port map
 	(
 		clock => i_clk,
 		clken => s_oam_clk_enable,
 		address => s_oam_addr,
-		data => s_io_data,
+		data => s_oam_data,
 		wren => s_oam_write_enable,
 		q => s_oam_q
 	);
@@ -397,12 +404,25 @@ begin
 	begin
 		if rising_edge(i_clk) then
 			if i_clk_enable = '1' then
+				s_decay_mask <= (others => '0');
+			
 				if i_reset_n = '0' then
 					s_q <= x"00";
 					s_io_data <= x"00";
 					s_io_state <= idle;
 					s_io_latch <= true;
+					s_q_decay <= (others => 0);
 				else
+					for i in 0 to 7 loop
+						if s_decay_mask(i) = '1' then
+							s_q_decay(i) <= MAX_DECAY;
+						elsif s_q_decay(i) /= 0 then
+							s_q_decay(i) <= s_q_decay(i) - 1;
+						else
+							s_q(i) <= '0';
+						end if;
+					end loop;
+				
 					case s_io_state is
 					
 						when idle =>
@@ -412,6 +432,7 @@ begin
 								
 								if i_write_enable = '1' then
 									s_q <= i_data;
+									s_decay_mask <= (others => '1');
 								end if;
 
 								case i_addr is
@@ -482,6 +503,7 @@ begin
 						when oamdata_read =>
 							if s_io_cycle = 1 then
 								s_io_state <= idle;
+								s_decay_mask <= (others => '1');
 								
 								if s_spr_mem_d = oam then
 									s_q <= s_oam_eff_q;
@@ -497,7 +519,8 @@ begin
 								s_io_state <= idle;
 							else
 								if s_io_cycle = PPUSTATUS_READ_CYCLE then
-									s_q <= s_vblank & s_sprite_0_hit & s_sprite_overflow & "00000";
+									s_q(7 downto 5) <= s_vblank & s_sprite_0_hit & s_sprite_overflow;
+									s_decay_mask(7 downto 5) <= (others => '1');
 								end if;
 
 								s_io_cycle <= s_io_cycle + 1;
@@ -506,7 +529,6 @@ begin
 						when oamaddr | oamdata_write | ppuctrl | ppuscroll_x | ppuscroll_y | ppumask | ppuaddr_hi =>
 							if s_io_cycle = 1 then
 								s_io_state <= idle;
-								s_q <= x"00";
 							else
 								s_io_cycle <= s_io_cycle + 1;
 							end if;
@@ -518,9 +540,11 @@ begin
 							else
 								if s_io_cycle = 1 then
 									if s_palette_access then
-										s_q <= s_palette_mem(to_pal_idx(s_vram_addr_v(4 downto 0)));
+										s_q(5 downto 0) <= s_palette_mem(to_pal_idx(s_vram_addr_v(4 downto 0)));
+										s_decay_mask(5 downto 0) <= (others => '1');
 									else
 										s_q <= s_io_mem;
+										s_decay_mask <= (others => '1');
 									end if;
 								end if;
 							
@@ -871,7 +895,7 @@ begin
 			if i_clk_enable = '1' then
 				if (s_io_state = ppudata_write) and s_palette_access and (s_io_cycle = 1) then
 					index := to_pal_idx(s_vram_addr_v(4 downto 0));
-					s_palette_mem(index) <= s_io_data;
+					s_palette_mem(index) <= s_io_data(5 downto 0);
 				end if;
 			end if;
 		end if;
@@ -1007,7 +1031,7 @@ begin
 					end if;
 					
 					-- OAMADDR wird bei allen sichtbaren und der Prerender-Zeile von Zyklus 257 bis 320 bei jedem Tick auf 0 gesetzt
-					if s_visible_or_prescan_line and s_hblank_cycle then
+					if s_visible_or_prescan_line and s_hblank_cycle and s_enable_rendering then
 						s_oam_addr <= x"00";
 					end if;
 					
@@ -1224,7 +1248,6 @@ begin
 									s_spr_mem <= oam;
 								else
 									s_spr_state <= idle;
-									s_spr_mem <= soa;
 								end if;
 							end if;
 
@@ -1389,9 +1412,10 @@ begin
 	s_vassign <= (s_cycle >= 280) and (s_cycle <= 304) and s_prescan_line;
 	s_background_pixel <= s_th_q(s_fine_scroll_x) & s_tl_q(s_fine_scroll_x) when (s_enable_background = '1') and ((s_render_first_bkg_col = '1') or (s_xpos(7 downto 3) /= "00000")) else "00";
 	s_background_palette_index <= s_bh_q(s_fine_scroll_x) & s_bl_q(s_fine_scroll_x);
-	s_palette_color <= s_palette_mem(to_pal_idx(s_palette_index))(5 downto 0);
+	s_palette_color <= s_palette_mem(to_pal_idx(s_palette_index));
 	s_palette_access <= s_vram_addr_v(14 downto 8) = 7x"3f";
 	
+	s_oam_data <= s_io_data(7 downto 5) & "000" & s_io_data(1 downto 0) when s_oam_addr(1 downto 0) = "10" else s_io_data;
 	s_oam_eff_q <= x"ff" when (s_spr_state = clear1) or (s_spr_state = clear2) else s_oam_q;
 	s_oam_clk_enable <= i_clk_enable when s_spr_mem = oam else '0';
 	s_soa_clk_enable <= i_clk_enable when s_spr_mem = soa else '0';
