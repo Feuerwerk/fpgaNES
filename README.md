@@ -20,11 +20,10 @@ What works:
 - NEStress
 - ppu_vbl_nmi
 - sprite_hit_tests_2005.10.05
+- sprite_overflow_tests
 (Audio test roms are the next things on my todo list)
 
 
 What is currently not implemented:
 
-- PPU color emphasize
 - low / high pass filter (i added both with the equations blargg published but for some reason they don’t work)
-- Support for PAL games (currently i only implemented the clock speed and lookup tables for NTSC games)
