@@ -211,7 +211,7 @@ architecture behavioral of ppu is
 	constant VBLANK_SET_CYCLE : integer := 1;
 	constant VBLANK_CLEAR_CYCLE : integer := 1;
 	constant SPR0HIT_CLEAR_CYCLE : integer := 0;
-	constant SPROVFW_CLEAR_CYCLE : integer := 1;
+	constant SPROVFW_CLEAR_CYCLE : integer := 0;
 	constant MAX_DECAY : integer := 3192000;
 	
 	type decay_array_t is array (0 to 7) of integer range 0 to MAX_DECAY;
