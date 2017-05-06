@@ -12,16 +12,36 @@ framerate of 50 Hz having 2x2 display pixels per nes pixel. Beside the HDMI audi
 soldered a NES Four Score to the GPIO-Port to simply plug/unplug the controllers to the
 FPGA.
 
+The following tests are from http://wiki.nesdev.com/w/index.php/Emulator_tests
+Passed Tests:
+
+PPU)
+- oam_read
+- oam_stress
+- ppu_sprite_hit
+- ppu_open_bus
+- ppu_vbl_nmi
+- ppu_sprite_overflow (all but 03-timing sometimes)
+
+
 What works:
 
 - https://github.com/Klaus2m5/6502_65C02_functional_tests
 - Super Mario Brothers 1
-- blargg_ppu_tests_2005.09.15b
-- NEStress
-- ppu_vbl_nmi
-- sprite_hit_tests_2005.10.05
-- sprite_overflow_tests
-(Audio test roms are the next things on my todo list)
+- Super Mario Brothers 2
+- Super Mario Brothers 3
+- Mario Bros. Classic
+- Mario & Yoshi
+- Donkey Kong
+- The Smurfs
+- Metroid
+- Megaman 1-6
+
+
+What works a little bit
+
+- Micro Machines (various glitches)
+- Battletoads (various glitches)
 
 
 What is currently not implemented:
