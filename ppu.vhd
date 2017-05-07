@@ -515,7 +515,7 @@ begin
 							end if;
 							
 						when ppustatus =>
-							if s_io_cycle = 7 then
+							if s_io_cycle = 2 then
 								s_io_state <= idle;
 							else
 								if s_io_cycle = PPUSTATUS_READ_CYCLE then
