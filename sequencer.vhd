@@ -35,7 +35,8 @@ entity sequencer is
 		o_alu_op : out alu_op_t;
 		o_addr_op : out addr_op_t;
 		o_alu_a_op : out alu_inp_t;
-		o_alu_b_op : out alu_inp_t
+		o_alu_b_op : out alu_inp_t;
+		o_branch_op : out boolean
 	);
 end sequencer;
 
@@ -660,10 +661,10 @@ begin
 		nzv when b"0010_0100_010", -- BIT / Zero Page
 		nzv when b"0010_1100_011", -- BIT / Absolute
 		sei when b"0000_0000_011", -- BRK / Implied
-		clc when b"0001_1000_001", -- CLC / Implied
-		cld when b"1101_1000_001", -- CLD / Implied
-		cli when b"0101_1000_001", -- CLI / Implied
-		clv when b"1011_1000_001", -- CLV / Implied
+		clc when b"0001_1000_000", -- CLC / Implied
+		cld when b"1101_1000_000", -- CLD / Implied
+		cli when b"0101_1000_000", -- CLI / Implied
+		clv when b"1011_1000_000", -- CLV / Implied
 		nzc when b"1100_1001_001", -- CMP / Immediate
 		nzc when b"1100_0101_010", -- CMP / Zero Page
 		nzc when b"1101_0101_011", -- CMP / Zero Page,X
@@ -752,9 +753,9 @@ begin
 		nvzc when b"1111_1001_100", -- SBC / Absolute,Y
 		nvzc when b"1110_0001_101", -- SBC / (Indirect,X)
 		nvzc when b"1111_0001_101", -- SBC / (Indirect),Y
-		stc when b"0011_1000_001", -- SEC / Implied
-		sed when b"1111_1000_001", -- SED / Implied
-		sei when b"0111_1000_001", -- SEI / Implied
+		stc when b"0011_1000_000", -- SEC / Implied
+		sed when b"1111_1000_000", -- SED / Implied
+		sei when b"0111_1000_000", -- SEI / Implied
 		nz when b"1010_1010_001", -- TAX / Implied
 		nz when b"1010_1000_001", -- TAY / Implied
 		nz when b"1011_1010_001", -- TSX / Implied
@@ -1801,6 +1802,9 @@ begin
 		zaq when b"1001_0100_010", -- STY / Zero Page,X
 		aqd when b"1000_1100_010", -- STY / Absolute
 		nop when others;
+		
+	-- Branching
+	o_branch_op <= (s_addr(7 downto 0) = b"1_0000_010");
 
 	s_addr <= std_ulogic_vector(i_opcode & i_cycle);
 	

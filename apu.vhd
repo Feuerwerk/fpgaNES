@@ -1612,9 +1612,11 @@ architecture behavioral of apu is
 	signal s_dmc_addr : std_logic_vector(15 downto 0);
 	signal s_dmc_int_pending : std_logic;
 	signal s_clock_trigger : std_logic := '0';
-	signal s_frame_irq_n : std_logic := '1';
-	signal s_frame_int_trigger : boolean;
+	signal s_frame_int_trigger : std_logic;
 	signal s_frame_int_active : std_logic;
+	signal s_frame_int_buffer : std_logic_vector(2 downto 0) := (others => '0');
+	signal s_frame_int_visible : std_logic;
+	signal s_last_cycle : std_logic;
 	signal s_data : std_logic_vector(7 downto 0) := x"00";
 	signal s_data_sync : std_logic_vector(7 downto 0);
 	signal s_r17_written : boolean := false;
@@ -1768,10 +1770,10 @@ begin
 			elsif i_clk_enable = '1' then
 				if s_write_r17_sync and (s_data_sync(6) = '1') then
 					s_frame_int_pending <= '0';
-				elsif s_frame_int_trigger then
-					s_frame_int_pending <= '1';
 				elsif s_read_r15 then
 					s_frame_int_pending <= '0';
+				elsif s_frame_int_trigger then
+					s_frame_int_pending <= '1';
 				end if;
 			end if;
 		end if;
@@ -1781,9 +1783,9 @@ begin
 	begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
-				s_frame_irq_n <= '1';
+				s_frame_int_buffer <= (others => '0');
 			elsif i_clk_enable = '1' then
-				s_frame_irq_n <= not s_frame_int_pending;
+				s_frame_int_buffer <= s_frame_int_buffer(1 downto 0) & s_frame_int_active;
 			end if;
 		end if;
 	end process;
@@ -1792,19 +1794,17 @@ begin
 	begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
-				s_frame_int_trigger <= false;
-			elsif s_apu_clk = '1' then
-				if (s_clk_divider = 29829) and (s_int_disable = '0') and (s_mode = '0') then
-					s_frame_int_trigger <= true;
-				else
-					s_frame_int_trigger <= false;
-				end if;
+				s_frame_int_visible <= '0';
+			elsif i_clk_enable = '1' then
+				s_frame_int_visible <= s_frame_int_trigger or s_frame_int_pending;
 			end if;
 		end if;
 	end process;
 	
-	o_int_n <= s_frame_irq_n and not s_dmc_int_pending;
-	s_frame_int_active <= '1' when s_frame_int_trigger else s_frame_int_pending;
+	o_int_n <= s_frame_int_pending nor s_dmc_int_pending;
+	s_frame_int_active <= s_last_cycle and not s_int_disable and not s_mode;
+	s_frame_int_trigger <= s_frame_int_active or s_frame_int_buffer(2);
+	s_last_cycle <= '1' when (s_clk_divider = 29829) else '0';
 	
 	-- Frame Sequencer
 
@@ -1952,7 +1952,7 @@ begin
 				case i_addr is
 				
 					when REG_4015 =>
-						s_q <= s_dmc_int_pending & s_frame_int_active & '0' & s_dmc_active & s_noise_active & s_triangle_active & s_square2_active & s_square1_active;
+						s_q <= s_dmc_int_pending & s_frame_int_visible & '0' & s_dmc_active & s_noise_active & s_triangle_active & s_square2_active & s_square1_active;
 						
 					when REG_4016 =>
 						s_q <= "0000000" & not i_ctrl_a_data;

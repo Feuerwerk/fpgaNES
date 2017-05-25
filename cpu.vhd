@@ -751,8 +751,7 @@ entity cpu is
 	port
 	(
 		i_clk : in std_logic;
-		i_clk_p_enable : in std_logic := '1';
-		i_clk_n_enable : in std_logic := '0';
+		i_clk_enable : in std_logic := '1';
 		i_ready : in std_logic := '1';
 		i_reset_n : in std_logic := '1';
 		i_int_n : in std_logic := '1';
@@ -807,13 +806,15 @@ architecture behavioral of cpu is
 			o_alu_op : out alu_op_t;
 			o_addr_op : out addr_op_t;
 			o_alu_a_op : out alu_inp_t;
-			o_alu_b_op : out alu_inp_t
+			o_alu_b_op : out alu_inp_t;
+			o_branch_op : out boolean
 		);
 	end component;
 	
 	constant BRK_OPCODE : std_logic_vector(7 downto 0) := x"00";
 	
 	type opcode_override_t is (nop, rst, int, nmi);
+	type interrupt_t is array (0 to 1) of opcode_override_t;
 
 	signal s_mem_addr : std_logic_vector(15 downto 0);
 	signal s_mem_data : std_logic_vector(7 downto 0);
@@ -833,7 +834,8 @@ architecture behavioral of cpu is
 	signal s_xreg : std_logic_vector(7 downto 0) := x"00";
 	signal s_yreg : std_logic_vector(7 downto 0) := x"00";
 	signal s_sreg : std_logic_vector(7 downto 0) := x"00";
-	signal s_flags : flags_t := ( others => '0' );
+	signal s_flags_reg : flags_t := ( others => '0' );
+	signal s_flags : flags_t;
 	signal s_alu_a : std_logic_vector(7 downto 0);
 	signal s_alu_b : std_logic_vector(7 downto 0);
 	signal s_alu_q : std_logic_vector(8 downto 0);
@@ -842,7 +844,7 @@ architecture behavioral of cpu is
 	signal s_overflow : std_logic;
 	signal s_alu_carry_input : std_logic_vector(7 downto 0);
 	signal s_extended_add : std_logic;
-	signal s_branch : std_logic;
+	signal s_perform_branching : std_logic;
 	signal s_skip_cycle : boolean;
 	signal s_pc_op : pc_op_t;
 	signal s_in_op : in_op_t;
@@ -854,21 +856,26 @@ architecture behavioral of cpu is
 	signal s_ctrl_op : ctrl_op_t;
 	signal s_alu_a_op : alu_inp_t;
 	signal s_alu_b_op : alu_inp_t;
-	signal s_int_active : boolean := false;
-	signal s_nmi_active : boolean := false;
+	signal s_branch_op : boolean;
+	signal s_int_active : boolean;
+	signal s_nmi_active : boolean;
+	signal s_nmi_present : boolean := false;
 	signal s_nmi_last : std_logic := '1';
 	signal s_nmi_trigger : std_logic;
-	signal s_nmi_trigger_d : std_logic := '0';
 	signal s_int_trigger : std_logic;
-	signal s_int_delay : std_logic_vector(1 downto 0);
 	signal s_clk_enable : std_logic;
 	signal s_ready_d : std_logic := '1';
 	signal s_sync_edge : std_logic;
+	signal s_interrupt_present : opcode_override_t := nop;
 	signal s_opcode_override : opcode_override_t := nop;
+	signal s_next_interrupt : opcode_override_t;
+	signal s_interrupt : interrupt_t := (others => nop);
 	signal s_mem_q : std_logic_vector(7 downto 0);
 	signal s_mem_q_d : std_logic_vector(7 downto 0) := x"00";
 	signal s_break_addr : std_logic_vector(7 downto 0);
 	signal s_enable_b : std_logic;
+	signal s_extended_add_required : boolean := false;
+	signal s_test_irq : boolean;
 	alias s_alu_res : std_logic_vector(7 downto 0) is s_alu_q(7 downto 0);
 	alias s_alu_c : std_logic is s_alu_q(8);
 	
@@ -900,12 +907,13 @@ begin
 		o_addr_op => s_addr_op,
 		o_ctrl_op => s_ctrl_op,
 		o_alu_a_op => s_alu_a_op,
-		o_alu_b_op => s_alu_b_op
+		o_alu_b_op => s_alu_b_op,
+		o_branch_op => s_branch_op
 	);
 	
 	-- Clock Divider & Internal Clock
 	
-	s_clk_enable <= i_clk_p_enable and i_ready;
+	s_clk_enable <= i_clk_enable and i_ready;
 	
 	-- Memory-Access
 	-- Last read memory value is stored if ready-signal drop to 0 and is available until ready returns to 1
@@ -915,7 +923,7 @@ begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_mem_q_d <= x"00";
-			elsif (i_clk_p_enable = '1') and (s_ready_d = '1') then
+			elsif (i_clk_enable = '1') and (s_ready_d = '1') then
 				s_mem_q_d <= i_mem_q;
 			end if;
 		end if;
@@ -930,7 +938,7 @@ begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
 				s_ready_d <= '1';
-			elsif i_clk_p_enable = '1' then
+			elsif i_clk_enable = '1' then
 				s_ready_d <= i_ready;
 			end if;
 		end if;
@@ -938,25 +946,6 @@ begin
 	
 	-- Detection and Shifting
 	
-	process (i_clk)
-	begin
-		if rising_edge(i_clk) then
-			if s_clk_enable = '1' then
-				if i_reset_n = '0' then
-					s_opcode_override <= rst;
-				elsif s_fetch then
-					if s_nmi_active then
-						s_opcode_override <= nmi;
-					elsif s_int_active then
-						s_opcode_override <= int;
-					else
-						s_opcode_override <= nop;
-					end if;
-				end if;
-			end if;
-		end if;
-	end process;
-
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
@@ -975,7 +964,7 @@ begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
-					s_alu_q_d <= 9x"00";
+					s_alu_q_d <= (others => '0');
 				else
 					s_alu_q_d <= s_alu_q;
 				end if;
@@ -985,43 +974,80 @@ begin
 	
 	-- INT and NMI
 	
+	s_next_interrupt <= nmi when s_nmi_active
+	                    else int when s_int_active
+						     else nop;
+						
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if s_clk_enable = '1' then
+				if i_reset_n = '0' then
+					s_interrupt <= (others => nop);
+				else
+					s_interrupt(1) <= s_interrupt(0);
+					s_interrupt(0) <= s_next_interrupt;
+				end if;
+			end if;
+		end if;
+	end process;
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if s_clk_enable = '1' then
+				if i_reset_n = '0' then
+					s_opcode_override <= rst;
+				elsif s_test_irq then
+					if s_interrupt_present /= nop then
+						s_opcode_override <= s_interrupt_present;
+					else
+						s_opcode_override <= s_interrupt(1);
+					end if;
+				end if;
+			end if;
+		end if;
+	end process;
+	
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if s_clk_enable = '1' then
+				if i_reset_n = '0' then
+					s_interrupt_present <= nop;
+				elsif s_test_irq then
+					s_interrupt_present <= nop;
+				elsif s_fetch and not s_test_irq then
+					s_interrupt_present <= s_interrupt(1);
+				end if;
+			end if;
+		end if;
+	end process;
+
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if i_reset_n = '0' then
-				s_nmi_active <= false;
-				s_nmi_trigger_d <= '0';
-				s_nmi_active <= false;
+				s_nmi_present <= false;
 				s_nmi_last <= '1';
 			elsif s_clk_enable = '1' then
 				if (s_opcode_override = nmi) then
-					s_nmi_active <= false;
+					s_nmi_present <= false;
 				end if;
 				
-				if s_nmi_trigger_d = '1' then
-					s_nmi_active <= true;
+				if s_nmi_trigger = '1' then
+					s_nmi_present <= true;
 				end if;
-			
-				s_nmi_trigger_d <= s_nmi_trigger;
 				
 				s_nmi_last <= i_nmi_n;
 			end if;
 		end if;
 	end process;
 	
-	process (i_clk)
-	begin
-		if rising_edge(i_clk) then
-			if i_reset_n = '0' then
-				s_int_delay <= (others => '0');
-			elsif s_clk_enable = '1' then
-				s_int_delay <= s_int_delay(0) & s_int_trigger;
-			end if;
-		end if;
-	end process;
+	s_int_active <= s_int_trigger = '1';
+	s_int_trigger <= i_int_n nor s_flags.i;
 	
-	s_int_active <= s_int_delay(1) = '1';
-	s_int_trigger <= not i_int_n and not s_flags.i;
+	s_nmi_active <= (s_nmi_trigger = '1') or s_nmi_present;
 	s_nmi_trigger <= s_nmi_last and not i_nmi_n;
 	
 	-- Cycle
@@ -1058,9 +1084,9 @@ begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
-					s_pc_reg <= x"8000";
+					s_pc_reg <= (others => '0');
 				elsif s_fetch then
-					if s_nmi_active or s_int_active then
+					if s_test_irq and (s_interrupt(1) /= nop) then
 						s_pc_reg <= s_pc;
 					else
 						s_pc_reg <= s_pc_inc;
@@ -1159,10 +1185,10 @@ begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
-					s_areg <= x"00";
-					s_xreg <= x"00";
-					s_yreg <= x"00";
-					s_sreg <= x"00";
+					s_areg <= (others => '0');
+					s_xreg <= (others => '0');
+					s_yreg <= (others => '0');
+					s_sreg <= (others => '0');
 				else
 					case s_reg_op is
 					
@@ -1187,27 +1213,38 @@ begin
 	end process;
 	
 	-- I Flag
+	
+	process (all)
+	begin
+		case s_flags_op is
+		
+			when din =>
+				s_flags.i <= s_mem_q(I_FLAG);
+				
+			when others =>
+				s_flags.i <= s_flags_reg.i;
 
+		end case;
+	end process;
+	
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
-					s_flags.i <= '0';
+					s_flags_reg.i <= '0';
 				else
 					case s_flags_op is
 					
-						when din =>
-							s_flags.i <= s_mem_q(I_FLAG);
-					
 						when sei =>
-							s_flags.i <= '1';
+							s_flags_reg.i <= '1';
 							
 						when cli =>
-							s_flags.i <= '0';
+							s_flags_reg.i <= '0';
 							
 						when others =>
-					
+							s_flags_reg.i <= s_flags.i;
+
 					end case;
 				end if;
 			end if;
@@ -1215,23 +1252,37 @@ begin
 	end process;
 	
 	-- Z Flag
+	
+	process (all)
+	begin
+		case s_flags_op is
+		
+			when din =>
+				s_flags.z <= s_mem_q(Z_FLAG);
+				
+			when nzv =>
+				s_flags.z <= ze(s_alu_res);
+				
+			when others =>
+				s_flags.z <= s_flags_reg.z;
+
+		end case;
+	end process;
 
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
-					s_flags.z <= '0';
+					s_flags_reg.z <= '0';
 				else
 					case s_flags_op is
 					
-						when din =>
-							s_flags.z <= s_mem_q(Z_FLAG);
-					
-						when nz | nzv | nzc | nvzc =>
-							s_flags.z <= ze(s_alu_res);
+						when nz | nzc | nvzc =>
+							s_flags_reg.z <= ze(s_alu_res);
 							
 						when others =>
+							s_flags_reg.z <= s_flags.z;
 					
 					end case;
 				end if;
@@ -1240,26 +1291,37 @@ begin
 	end process;
 	
 	-- N Flag
+	
+	process (all)
+	begin
+		case s_flags_op is
+		
+			when din =>
+				s_flags.n <= s_mem_q(N_FLAG);
+				
+			when nzv =>
+				s_flags.n <= s_mem_q(7);
+				
+			when others =>
+				s_flags.n <= s_flags_reg.n;
 
-	process (i_clk, s_clk_enable)
+		end case;
+	end process;
+
+	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
-					s_flags.n <= '0';
+					s_flags_reg.n <= '0';
 				else
 					case s_flags_op is
 					
-						when din =>
-							s_flags.n <= s_mem_q(N_FLAG);
-					
 						when nz | nzc | nvzc =>
-							s_flags.n <= s_alu_res(7);
-							
-						when nzv =>
-							s_flags.n <= s_mem_q(7);
-							
+							s_flags_reg.n <= s_alu_res(7);
+
 						when others =>
+							s_flags_reg.n <= s_flags.n;
 					
 					end case;
 				end if;
@@ -1268,29 +1330,40 @@ begin
 	end process;
 		
 	-- V Flag
+	
+	process (all)
+	begin
+		case s_flags_op is
+		
+			when din =>
+				s_flags.v <= s_mem_q(V_FLAG);
+				
+			when nzv =>
+				s_flags.v <= s_mem_q(6);
+				
+			when others =>
+				s_flags.v <= s_flags_reg.v;
+
+		end case;
+	end process;
 
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
-					s_flags.v <= '0';
+					s_flags_reg.v <= '0';
 				else
 					case s_flags_op is
 					
-						when din =>
-							s_flags.v <= s_mem_q(V_FLAG);
-					
 						when nvzc =>
-							s_flags.v <= s_overflow;
-							
-						when nzv =>
-							s_flags.v <= s_mem_q(6);
+							s_flags_reg.v <= s_overflow;
 							
 						when clv =>
-							s_flags.v <= '0';
+							s_flags_reg.v <= '0';
 							
 						when others =>
+							s_flags_reg.v <= s_flags.v;
 					
 					end case;
 				end if;
@@ -1299,29 +1372,40 @@ begin
 	end process;
 	
 	-- C Flag
+	
+	process (all)
+	begin
+		case s_flags_op is
+		
+			when din =>
+				s_flags.c <= s_mem_q(C_FLAG);
+				
+			when others =>
+				s_flags.c <= s_flags_reg.c;
+
+		end case;
+	end process;
 
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
-					s_flags.c <= '0';
+					s_flags_reg.c <= '0';
 				else
 					case s_flags_op is
-					
-						when din =>
-							s_flags.c <= s_mem_q(C_FLAG);
-					
+
 						when stc =>
-							s_flags.c <= '1';
+							s_flags_reg.c <= '1';
 							
 						when clc =>
-							s_flags.c <= '0';
+							s_flags_reg.c <= '0';
 							
 						when nzc | nvzc =>
-							s_flags.c <= s_alu_c;
+							s_flags_reg.c <= s_alu_c;
 							
 						when others =>
+							s_flags_reg.c <= s_flags.c;
 					
 					end case;
 				end if;
@@ -1330,26 +1414,37 @@ begin
 	end process;
 	
 	-- D Flag
+	
+	process (all)
+	begin
+		case s_flags_op is
+		
+			when din =>
+				s_flags.d <= s_mem_q(D_FLAG);
+				
+			when others =>
+				s_flags.d <= s_flags_reg.d;
+
+		end case;
+	end process;
 
 	process (i_clk)
 	begin
 		if rising_edge(i_clk) then
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
-					s_flags.d <= '0';
+					s_flags_reg.d <= '0';
 				else
 					case s_flags_op is
 					
-						when din =>
-							s_flags.d <= s_mem_q(D_FLAG);
-					
 						when sed =>
-							s_flags.d <= '1';
+							s_flags_reg.d <= '1';
 							
 						when cld =>
-							s_flags.d <= '0';
+							s_flags_reg.d <= '0';
 							
 						when others =>
+							s_flags_reg.d <= s_flags.d;
 					
 					end case;
 				end if;
@@ -1406,18 +1501,32 @@ begin
 		s_alu_res & s_alu_q_d(7 downto 0) when aqd,
 		s_alu_q_d(7 downto 0) & s_value when adv,
 		x"----" when others;
-
-	with s_ctrl_op select s_skip_cycle <=
-		(s_alu_c = '0') when alc,
-		(s_extended_add = '0') when bcc,
-		(s_extended_add = '0') when bcs,
-		(s_extended_add = '0') when bne,
-		(s_extended_add = '0') when beq,
-		(s_extended_add = '0') when bpl,
-		(s_extended_add = '0') when bmi,
-		(s_extended_add = '0') when bvc,
-		(s_extended_add = '0') when bvs,
-		false when others;
+		
+	-- Branching
+	
+	with s_ctrl_op select s_perform_branching <= -- is 0 when branch condition is false but branching is requested
+		not s_flags.c when bcc,
+		s_flags.c when bcs,
+		not s_flags.z when bne,
+		s_flags.z when beq,
+		not s_flags.n when bpl,
+		s_flags.n when bmi,
+		not s_flags.v when bvc,
+		s_flags.v when bvs,
+		'1' when others;
+		
+	process (i_clk)
+	begin
+		if rising_edge(i_clk) then
+			if s_clk_enable = '1' then
+				if i_reset_n = '0' then
+					s_extended_add_required <= false;
+				else
+					s_extended_add_required <= (s_extended_add = '1');
+				end if;
+			end if;
+		end if;
+	end process;
 		
 	-- current opcode which has to be executed
 	s_opcode <= BRK_OPCODE when s_opcode_override /= nop
@@ -1444,22 +1553,17 @@ begin
 	-- input parameter for the ALU when carry for a 16-bit value is needed (e.g. program counter)
 	s_alu_carry_input <= s_alu_q_d(7) & s_alu_q_d(7) & s_alu_q_d(7) & s_alu_q_d(7) & s_alu_q_d(7) & s_alu_q_d(7) & s_alu_q_d(7) & '1';
 
-	-- is 1 when branch condition is true but no branching is requested
-	with s_ctrl_op select s_branch <=
-		not s_flags.c when bcc,
-		s_flags.c when bcs,
-		not s_flags.z when bne,
-		s_flags.z when beq,
-		not s_flags.n when bpl,
-		s_flags.n when bmi,
-		not s_flags.v when bvc,
-		s_flags.v when bvs,
-		'1' when others;
-
-	-- is 1 when fetching is active in the next cycle
-	s_fetch <= (s_ctrl_op = don) or (s_branch = '0');
+	-- is 1 when opcode fetching is active in the next cycle
+	s_fetch <= s_test_irq or (s_branch_op and not s_extended_add_required);
 	
+	-- is 1 when test for incoming INT/NMI should be done
+	s_test_irq <= (s_ctrl_op = don) or (s_perform_branching = '0');
+	
+	-- controls in B-Flag is set
 	s_enable_b <= '1' when s_opcode_override = nop else '0';
+	
+	-- is 1 when a cycle should be skipped (and address calculation stays within page)
+	s_skip_cycle <= (s_ctrl_op = alc) and (s_alu_c = '0');
 
 	o_mem_addr <= s_mem_addr;
 	o_mem_data <= s_mem_data;

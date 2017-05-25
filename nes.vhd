@@ -578,8 +578,7 @@ architecture behavioral of nescore is
 		port
 		(
 			i_clk : in std_logic;
-			i_clk_p_enable : in std_logic := '1';
-			i_clk_n_enable : in std_logic := '0';
+			i_clk_enable : in std_logic := '1';
 			i_ready : in std_logic := '1';
 			i_reset_n : in std_logic := '1';
 			i_int_n : in std_logic := '1';
@@ -694,8 +693,7 @@ architecture behavioral of nescore is
 		);
 	end component;
 	
-	signal s_cpu_clk_p_enable : std_logic;
-	signal s_cpu_clk_n_enable : std_logic;
+	signal s_cpu_clk_enable : std_logic;
 	signal s_cpu_sync : std_logic;
 	signal s_ppu_q : std_logic_vector(7 downto 0);
 	signal s_ppu_addr : std_logic_vector(2 downto 0);
@@ -742,7 +740,6 @@ architecture behavioral of nescore is
 	signal s_next_sync_start : natural range 0 to 31;
 	signal s_next_sync_stop : natural range 0 to 31;
 	signal s_last_cpu_cycle : boolean;
-	signal s_mid_cpu_cycle : boolean;
 	signal s_last_ppu_cycle : boolean;
 	signal s_pio_q : std_logic_vector(7 downto 0);
 	signal s_pio_addr : std_logic_vector(2 downto 0);
@@ -753,8 +750,7 @@ begin
 	cpu_core : cpu port map
 	(
 		i_clk => i_clk,
-		i_clk_p_enable => s_cpu_clk_p_enable,
-		i_clk_n_enable => s_cpu_clk_n_enable,
+		i_clk_enable => s_cpu_clk_enable,
 		i_ready => s_dma_ready and i_ready,
 		i_reset_n => i_reset_n,
 		i_nmi_n => s_nmi_n,
@@ -788,7 +784,7 @@ begin
 	apu_core : apu port map
 	(
 		i_clk => i_clk,
-		i_clk_enable => s_cpu_clk_p_enable,
+		i_clk_enable => s_cpu_clk_enable,
 		i_reset_n => i_reset_n,
 		i_addr => s_apu_addr,
 		i_data => s_eff_data,
@@ -829,7 +825,7 @@ begin
 	dpath : data_path port map
 	(
 		i_clk => i_clk,
-		i_clk_enable => s_cpu_clk_p_enable,
+		i_clk_enable => s_cpu_clk_enable,
 		i_sync => s_cpu_sync,
 		i_reset_n => i_reset_n,
 		i_addr => s_eff_addr,
@@ -982,11 +978,9 @@ begin
 	end process;
 	
 	s_last_cpu_cycle <= s_cpu_counter = s_cpu_divider - 1;
-	s_mid_cpu_cycle <= s_cpu_counter = s_sync_start;
 	s_last_ppu_cycle <= s_ppu_counter = s_ppu_divider - 1;
 	
-	s_cpu_clk_p_enable <= '1' when s_last_cpu_cycle else '0';
-	s_cpu_clk_n_enable <= '1' when s_mid_cpu_cycle else '0';
+	s_cpu_clk_enable <= '1' when s_last_cpu_cycle else '0';
 	s_ppu_clk_enable <= '1' when s_last_ppu_cycle else '0';
 	
 	s_eff_write_enable <= s_dma_write_enable when s_dma_active = '1' else s_mem_write_enable;
@@ -996,7 +990,7 @@ begin
 	s_int_n <= s_apu_int_n and i_irq_n;
 	s_chr_q <= s_ciram_q when s_ciram_ce_d(1) = '1' else s_chr_latch;
 
-	o_cpu_clk_enable <= s_cpu_clk_p_enable;
+	o_cpu_clk_enable <= s_cpu_clk_enable;
 	o_cpu_sync <= s_cpu_sync;
 	o_vga_clk_enable <= s_ppu_clk_enable;
 	o_chr_addr <= s_chr_addr;
