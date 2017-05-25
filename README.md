@@ -24,7 +24,7 @@ PPU)
 - ppu_sprite_hit
 - ppu_open_bus
 - ppu_vbl_nmi
-- ppu_sprite_overflow (all but 03-timing sometimes)
+- ppu_sprite_overflow (all but 05-emulator)
 
 APU)
 - blargg_apu_2005.07.30 (all but 07.irq_flag_timing and 09.reset_timing)
