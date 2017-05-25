@@ -1,6 +1,6 @@
 # fpgaNES
 
-This is an implementation of the nintendo entertainment system in an FPGA.
+This is an implementation of the Nintendo Entertainment System in an FPGA.
 
 It is based on the development board Cyclone V GX Starter Kit by Terasic with an
 Altera Cyclone V on board. It features plenty of memory, an HDMI out and an analog
@@ -8,11 +8,12 @@ Audio Codec. For some reason they decided to not connect the HDMI audio pins of 
 ADV7513 HDMI chip to the FPGA. But kindly they added solder points for the audio pins
 so i was able to access them trough some GPIO pins of the FPGA getting 44.1 kHz Audio
 directly through the HDMI connection. The hdmi video resolution is 640x480 at a
-framerate of 50 Hz having 2x2 display pixels per nes pixel. Beside the HDMI audio pins i
+framerate of 50 Hz having 2x2 display pixels per NES pixel. Beside the HDMI audio pins i
 soldered a NES Four Score to the GPIO-Port to simply plug/unplug the controllers to the
 FPGA.
 
 The following tests are from http://wiki.nesdev.com/w/index.php/Emulator_tests.
+
 Passed Tests:
 
 CPU)
