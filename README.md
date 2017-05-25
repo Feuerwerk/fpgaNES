@@ -12,7 +12,7 @@ framerate of 50 Hz having 2x2 display pixels per nes pixel. Beside the HDMI audi
 soldered a NES Four Score to the GPIO-Port to simply plug/unplug the controllers to the
 FPGA.
 
-The following tests are from http://wiki.nesdev.com/w/index.php/Emulator_tests
+The following tests are from http://wiki.nesdev.com/w/index.php/Emulator_tests.
 Passed Tests:
 
 CPU)
