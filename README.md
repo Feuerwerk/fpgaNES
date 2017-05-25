@@ -28,8 +28,8 @@ PPU)
 - ppu_sprite_overflow (all but 05-emulator)
 
 APU)
-- blargg_apu_2005.07.30 (all but 07.irq_flag_timing and 09.reset_timing)
-- apu_test (all but 6-irq_flag_timing)
+- blargg_apu_2005.07.30 (all but 09.reset_timing)
+- apu_test
 
 What works:
 
