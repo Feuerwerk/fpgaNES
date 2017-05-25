@@ -15,6 +15,9 @@ FPGA.
 The following tests are from http://wiki.nesdev.com/w/index.php/Emulator_tests
 Passed Tests:
 
+CPU)
+- cpu_interrupts_v2 (all but 5-branch_delays_irq)
+
 PPU)
 - oam_read
 - oam_stress
@@ -23,6 +26,9 @@ PPU)
 - ppu_vbl_nmi
 - ppu_sprite_overflow (all but 03-timing sometimes)
 
+APU)
+- blargg_apu_2005.07.30 (all but 07.irq_flag_timing and 09.reset_timing)
+- apu_test (all but 6-irq_flag_timing)
 
 What works:
 
