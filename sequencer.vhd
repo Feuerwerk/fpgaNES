@@ -36,7 +36,8 @@ entity sequencer is
 		o_addr_op : out addr_op_t;
 		o_alu_a_op : out alu_inp_t;
 		o_alu_b_op : out alu_inp_t;
-		o_branch_op : out boolean
+		o_branch_at_cycle_1 : out boolean;
+		o_branch_at_cycle_2 : out boolean
 	);
 end sequencer;
 
@@ -1804,7 +1805,8 @@ begin
 		nop when others;
 		
 	-- Branching
-	o_branch_op <= (s_addr(7 downto 0) = b"1_0000_010");
+	o_branch_at_cycle_1 <= (s_addr(7 downto 0) = b"1_0000_001");
+	o_branch_at_cycle_2 <= (s_addr(7 downto 0) = b"1_0000_010");
 
 	s_addr <= std_ulogic_vector(i_opcode & i_cycle);
 	

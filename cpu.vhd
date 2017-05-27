@@ -807,7 +807,8 @@ architecture behavioral of cpu is
 			o_addr_op : out addr_op_t;
 			o_alu_a_op : out alu_inp_t;
 			o_alu_b_op : out alu_inp_t;
-			o_branch_op : out boolean
+			o_branch_at_cycle_1 : out boolean;
+			o_branch_at_cycle_2 : out boolean
 		);
 	end component;
 	
@@ -856,7 +857,8 @@ architecture behavioral of cpu is
 	signal s_ctrl_op : ctrl_op_t;
 	signal s_alu_a_op : alu_inp_t;
 	signal s_alu_b_op : alu_inp_t;
-	signal s_branch_op : boolean;
+	signal s_branch_at_cycle_1 : boolean;
+	signal s_branch_at_cycle_2 : boolean;
 	signal s_int_active : boolean;
 	signal s_nmi_active : boolean;
 	signal s_nmi_present : boolean := false;
@@ -868,6 +870,7 @@ architecture behavioral of cpu is
 	signal s_sync_edge : std_logic;
 	signal s_interrupt_present : opcode_override_t := nop;
 	signal s_opcode_override : opcode_override_t := nop;
+	signal s_next_opcode_override : opcode_override_t;
 	signal s_next_interrupt : opcode_override_t;
 	signal s_interrupt : interrupt_t := (others => nop);
 	signal s_mem_q : std_logic_vector(7 downto 0);
@@ -876,6 +879,7 @@ architecture behavioral of cpu is
 	signal s_enable_b : std_logic;
 	signal s_extended_add_required : boolean := false;
 	signal s_test_irq : boolean;
+	signal s_persist_irq : boolean;
 	alias s_alu_res : std_logic_vector(7 downto 0) is s_alu_q(7 downto 0);
 	alias s_alu_c : std_logic is s_alu_q(8);
 	
@@ -908,7 +912,8 @@ begin
 		o_ctrl_op => s_ctrl_op,
 		o_alu_a_op => s_alu_a_op,
 		o_alu_b_op => s_alu_b_op,
-		o_branch_op => s_branch_op
+		o_branch_at_cycle_1 => s_branch_at_cycle_1,
+		o_branch_at_cycle_2 => s_branch_at_cycle_2
 	);
 	
 	-- Clock Divider & Internal Clock
@@ -998,16 +1003,16 @@ begin
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_opcode_override <= rst;
-				elsif s_test_irq then
-					if s_interrupt_present /= nop then
-						s_opcode_override <= s_interrupt_present;
-					else
-						s_opcode_override <= s_interrupt(1);
-					end if;
+				elsif s_fetch then
+					s_opcode_override <= s_next_opcode_override;
 				end if;
 			end if;
 		end if;
 	end process;
+	
+	s_next_opcode_override <= s_interrupt_present when s_interrupt_present /= nop
+	                          else s_interrupt(1) when s_test_irq
+									  else s_opcode_override;
 	
 	process (i_clk)
 	begin
@@ -1015,9 +1020,9 @@ begin
 			if s_clk_enable = '1' then
 				if i_reset_n = '0' then
 					s_interrupt_present <= nop;
-				elsif s_test_irq then
+				elsif s_fetch then
 					s_interrupt_present <= nop;
-				elsif s_fetch and not s_test_irq then
+				elsif s_persist_irq and not s_test_irq then
 					s_interrupt_present <= s_interrupt(1);
 				end if;
 			end if;
@@ -1086,7 +1091,7 @@ begin
 				if i_reset_n = '0' then
 					s_pc_reg <= (others => '0');
 				elsif s_fetch then
-					if s_test_irq and (s_interrupt(1) /= nop) then
+					if s_next_opcode_override /= nop then
 						s_pc_reg <= s_pc;
 					else
 						s_pc_reg <= s_pc_inc;
@@ -1554,10 +1559,13 @@ begin
 	s_alu_carry_input <= s_alu_q_d(7) & s_alu_q_d(7) & s_alu_q_d(7) & s_alu_q_d(7) & s_alu_q_d(7) & s_alu_q_d(7) & s_alu_q_d(7) & '1';
 
 	-- is 1 when opcode fetching is active in the next cycle
-	s_fetch <= s_test_irq or (s_branch_op and not s_extended_add_required);
+	s_fetch <= s_test_irq or (s_branch_at_cycle_2 and not s_extended_add_required);
 	
 	-- is 1 when test for incoming INT/NMI should be done
 	s_test_irq <= (s_ctrl_op = don) or (s_perform_branching = '0');
+	
+	-- is 1 when state of IRQ should be remembered for later evaluation
+	s_persist_irq <= s_branch_at_cycle_1;
 	
 	-- controls in B-Flag is set
 	s_enable_b <= '1' when s_opcode_override = nop else '0';
