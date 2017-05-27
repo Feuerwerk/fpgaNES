@@ -17,7 +17,7 @@ The following tests are from http://wiki.nesdev.com/w/index.php/Emulator_tests.
 Passed Tests:
 
 CPU)
-- cpu_interrupts_v2 (all but 5-branch_delays_irq)
+- cpu_interrupts_v2
 
 PPU)
 - oam_read
