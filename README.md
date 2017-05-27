@@ -19,6 +19,9 @@ Test Results:
 CPU)
 - cpu_interrupts_v2 (5/5)
 - instr_misc (2/4) : 03-dummy_reads, 04_dummy_reads_apu
+- instr_timing (1/2) : 1-instr_timing (because illegal opcodes not supported yet)
+- instr_test-v5 (16/16) : OFFICIAL Opcodes only
+- cpu_dummy_reads (1/1)
 
 PPU)
 - oam_read (1/1)
