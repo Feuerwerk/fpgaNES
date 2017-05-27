@@ -34,6 +34,14 @@ PPU)
 APU)
 - blargg_apu_2005.07.30 (10/11) :  09.reset_timing
 - apu_test (8/8)
+- apu_mixer (2/4) : noise, triangle
+- dmc_dma_during_read4 (1/5) : dma_2007_read, dma_2007_write, dma_4016_read, read_write_2007
+- square_timer_div2 (1/1)
+- test_apu_env (1/1)
+- test_apu_sweep (2/2)
+- test_apu_timers (4/4)
+- test_tri_lin_ctr (?/1) UNSURE
+
 
 What works:
 
