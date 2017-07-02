@@ -14,22 +14,34 @@ FPGA.
 
 The following tests are from http://wiki.nesdev.com/w/index.php/Emulator_tests.
 
-Passed Tests:
+Test Results:
 
 CPU)
-- cpu_interrupts_v2 (all but 5-branch_delays_irq)
+- cpu_interrupts_v2 (5/5)
+- instr_misc (2/4) : 03-dummy_reads, 04_dummy_reads_apu
+- instr_timing (1/2) : 1-instr_timing (because illegal opcodes not supported yet)
+- instr_test-v5 (16/16) : OFFICIAL Opcodes only
+- cpu_dummy_reads (1/1)
 
 PPU)
-- oam_read
-- oam_stress
-- ppu_sprite_hit
-- ppu_open_bus
-- ppu_vbl_nmi
-- ppu_sprite_overflow (all but 05-emulator)
+- oam_read (1/1)
+- oam_stress (1/1)
+- ppu_sprite_hit (10/10)
+- ppu_open_bus (1/1)
+- ppu_vbl_nmi (10/10)
+- ppu_sprite_overflow (4/5) : 05-emulator
 
 APU)
-- blargg_apu_2005.07.30 (all but 09.reset_timing)
-- apu_test
+- blargg_apu_2005.07.30 (10/11) :  09.reset_timing
+- apu_test (8/8)
+- apu_mixer (2/4) : noise, triangle
+- dmc_dma_during_read4 (1/5) : dma_2007_read, dma_2007_write, dma_4016_read, read_write_2007
+- square_timer_div2 (1/1)
+- test_apu_env (1/1)
+- test_apu_sweep (2/2)
+- test_apu_timers (4/4)
+- test_tri_lin_ctr (?/1) UNSURE
+
 
 What works:
 
