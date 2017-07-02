@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="US-ASCII" standalone="yes"?>
 <cof>
 	<eprom_name>EPCQ256</eprom_name>
-	<output_filename>nes.pof</output_filename>
+	<output_filename>output_files/nes.pof</output_filename>
 	<n_pages>1</n_pages>
 	<width>1</width>
 	<mode>7</mode>
@@ -9,7 +9,7 @@
 		<user_name>Page_0</user_name>
 		<page_flags>1</page_flags>
 		<bit0>
-			<sof_filename>C:/altera/projects/fpgaNES/output_files/nes.sof</sof_filename> 
+			<sof_filename>C:/intelFPGA/projects/fpgaNES/output_files/nes.sof</sof_filename> 
 		</bit0>
 	</sof_data>
 	<version>10</version>
@@ -18,7 +18,7 @@
 	<auto_create_rpd>0</auto_create_rpd>
 	<rpd_little_endian>1</rpd_little_endian>
 	<options>
-		<map_file>0</map_file>
+		<map_file>1</map_file>
 	</options>
 	<advanced_options>
 		<ignore_epcs_id_check>2</ignore_epcs_id_check>

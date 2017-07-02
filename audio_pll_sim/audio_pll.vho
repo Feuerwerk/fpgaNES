@@ -1,5 +1,5 @@
 --IP Functional Simulation Model
---VERSION_BEGIN 16.1 cbx_mgl 2017:01:18:18:27:06:SJ cbx_simgen 2017:01:18:18:20:37:SJ  VERSION_END
+--VERSION_BEGIN 17.0 cbx_mgl 2017:04:25:18:09:28:SJ cbx_simgen 2017:04:25:18:06:30:SJ  VERSION_END
 
 
 -- Copyright (C) 2017  Intel Corporation. All rights reserved.

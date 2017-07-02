@@ -11,9 +11,9 @@
 // agreement for further details.
 
 
-// $Id: //acds/rel/16.1/ip/sopc/components/primitives/altera_std_synchronizer/altera_std_synchronizer.v#1 $
+// $Id: //acds/rel/17.0std/ip/sopc/components/primitives/altera_std_synchronizer/altera_std_synchronizer.v#1 $
 // $Revision: #1 $
-// $Date: 2016/08/07 $
+// $Date: 2017/01/22 $
 // $Author: swbranch $
 //-----------------------------------------------------------------------------
 //

@@ -1,5 +1,5 @@
 set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_TOOL_NAME "altera_pll_reconfig"
-set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_TOOL_VERSION "16.1"
+set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_TOOL_VERSION "17.0"
 set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_TOOL_ENV "mwpim"
 set_global_assignment -library "master_reconfig" -name MISC_FILE [file join $::quartus(qip_path) "master_reconfig.cmp"]
 set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_TARGETED_DEVICE_FAMILY "Cyclone V"
@@ -11,7 +11,7 @@ set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name
 set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_COMPONENT_REPORT_HIERARCHY "Off"
 set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_COMPONENT_INTERNAL "Off"
 set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_COMPONENT_AUTHOR "QWx0ZXJhIENvcnBvcmF0aW9u"
-set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_COMPONENT_VERSION "MTYuMQ=="
+set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_COMPONENT_VERSION "MTcuMA=="
 set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_COMPONENT_DESCRIPTION "QWx0ZXJhIFBoYXNlLUxvY2tlZCBMb29wIFJlY29uZmlndXJhdGlvbiBCbG9jayhBTFRFUkFfUExMX1JFQ09ORklHKQ=="
 set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_COMPONENT_PARAMETER "RU5BQkxFX0JZVEVFTkFCTEU=::ZmFsc2U=::QWRkIGJ5dGVlbmFibGUgcG9ydA=="
 set_global_assignment -entity "master_reconfig" -library "master_reconfig" -name IP_COMPONENT_PARAMETER "QllURUVOQUJMRV9XSURUSA==::NA==::QllURUVOQUJMRV9XSURUSA=="
@@ -24,7 +24,7 @@ set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfi
 set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfig" -name IP_COMPONENT_REPORT_HIERARCHY "Off"
 set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfig" -name IP_COMPONENT_INTERNAL "Off"
 set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfig" -name IP_COMPONENT_AUTHOR "QWx0ZXJhIENvcnBvcmF0aW9u"
-set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfig" -name IP_COMPONENT_VERSION "MTYuMQ=="
+set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfig" -name IP_COMPONENT_VERSION "MTcuMA=="
 set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfig" -name IP_COMPONENT_DESCRIPTION "QWx0ZXJhIFBoYXNlLUxvY2tlZCBMb29wIFJlY29uZmlndXJhdGlvbiBCbG9jayhBTFRFUkFfUExMX1JFQ09ORklHKQ=="
 set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfig" -name IP_COMPONENT_PARAMETER "ZGV2aWNlX2ZhbWlseQ==::Q3ljbG9uZSBW::ZGV2aWNlX2ZhbWlseQ=="
 set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfig" -name IP_COMPONENT_PARAMETER "RU5BQkxFX01JRg==::ZmFsc2U=::RW5hYmxlIE1JRiBTdHJlYW1pbmc="
@@ -41,5 +41,5 @@ set_global_assignment -library "master_reconfig" -name VERILOG_FILE [file join $
 set_global_assignment -library "master_reconfig" -name VERILOG_FILE [file join $::quartus(qip_path) "master_reconfig/altera_std_synchronizer.v"]
 
 set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfig" -name IP_TOOL_NAME "altera_pll_reconfig"
-set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfig" -name IP_TOOL_VERSION "16.1"
+set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfig" -name IP_TOOL_VERSION "17.0"
 set_global_assignment -entity "altera_pll_reconfig_top" -library "master_reconfig" -name IP_TOOL_ENV "mwpim"

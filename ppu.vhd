@@ -299,7 +299,6 @@ architecture behavioral of ppu is
 	signal s_attr_addr : std_logic_vector(15 downto 0);
 	signal s_tile_lo_addr : std_logic_vector(15 downto 0);
 	signal s_tile_hi_addr : std_logic_vector(15 downto 0);
-	signal s_vassign : boolean;
 	signal s_q : std_logic_vector(7 downto 0) := x"00";
 	signal s_perform_oam_write_access : boolean;
 	signal s_perform_oam_access : boolean;
@@ -315,7 +314,7 @@ architecture behavioral of ppu is
 	signal s_palette_mem : byte_array_t := ( 6x"09", 6x"01", 6x"00", 6x"01", 6x"00", 6x"02", 6x"02", 6x"0D", 6x"08", 6x"10", 6x"08", 6x"24", 6x"00", 6x"00", 6x"04", 6x"2C", 6x"09", 6x"01", 6x"34", 6x"03", 6x"00", 6x"04", 6x"00", 6x"14", 6x"08", 6x"3A", 6x"00", 6x"02", 6x"00", 6x"20", 6x"2C", 6x"08" );
 	signal s_hblank_cycle : boolean;
 	signal s_first_col_n : boolean;
-	signal s_vram_bkg_inc : boolean;
+	--signal s_vram_bkg_inc : boolean;
 	signal s_frame_latch : boolean := true;
 	signal s_enable_rendering : boolean;
 	signal s_enable_shortcut : boolean := false;
@@ -847,17 +846,19 @@ begin
 					end if;
 
 					s_vram_addr_v(14) <= '0';
-				elsif s_enable_rendering and s_visible_or_prescan_line and s_hblank_cycle then
-					if s_cycle = 257 then -- Horizontal LoopyV <= Horizontal LoopyT
-						s_vram_addr_v(10) <= s_vram_addr_t(10);
-						s_vram_addr_v(4 downto 0) <= s_vram_addr_t(4 downto 0);
-					elsif s_vassign then -- Vertical LoopyV <= Horizontal LoopyT
-						s_vram_addr_v(9 downto 5) <= s_vram_addr_t(9 downto 5);
-						s_vram_addr_v(14 downto 11) <= s_vram_addr_t(14 downto 11);
+				elsif s_enable_rendering and s_visible_or_prescan_line then
+					if std_logic_vector(to_unsigned(s_cycle, 3)) = "111" and not s_hblank_cycle then
+						-- Horizontal LoopyV increment
+						if s_vram_addr_v(4 downto 0) = "11111" then
+							s_vram_addr_v(4 downto 0) <= "00000";
+							s_vram_addr_v(10) <= not s_vram_addr_v(10);
+						else
+							s_vram_addr_v(4 downto 0) <= s_vram_addr_v(4 downto 0) + "00001";
+						end if;
 					end if;
-				elsif s_enable_rendering and s_visible_or_prescan_line and s_vram_bkg_inc then
-					-- Vertical LoopyV increment
+
 					if s_cycle = 255 then
+						-- Vertical LoopyV increment
 						if s_vram_addr_v(14 downto 12) = "111" then
 							s_vram_addr_v(14 downto 12) <= "000";
 							
@@ -872,14 +873,14 @@ begin
 						else
 							s_vram_addr_v(14 downto 12) <= s_vram_addr_v(14 downto 12) + "001";
 						end if;
-					end if;
-					
-					-- Horizontal LoopyV increment
-					if s_vram_addr_v(4 downto 0) = "11111" then
-						s_vram_addr_v(4 downto 0) <= "00000";
-						s_vram_addr_v(10) <= not s_vram_addr_v(10);
-					else
-						s_vram_addr_v(4 downto 0) <= s_vram_addr_v(4 downto 0) + "00001";
+					elsif s_cycle = 256 then
+						-- Horizontal LoopyV <= Horizontal LoopyT
+						s_vram_addr_v(10) <= s_vram_addr_t(10);
+						s_vram_addr_v(4 downto 0) <= s_vram_addr_t(4 downto 0);
+					elsif (s_cycle >= 279) and (s_cycle <= 303) and s_prescan_line then
+						-- Vertical LoopyV <= Vertical LoopyT
+						s_vram_addr_v(9 downto 5) <= s_vram_addr_t(9 downto 5);
+						s_vram_addr_v(14 downto 11) <= s_vram_addr_t(14 downto 11);
 					end if;
 				end if;
 			end if;
@@ -1394,7 +1395,7 @@ begin
 	s_visible_or_prescan_line <= s_visible_line or s_prescan_line;
 	s_last_cycle <= s_cycle = 340;
 	s_hblank_cycle <= (s_cycle > 256) and (s_cycle < 321);
-	s_vram_bkg_inc <= std_logic_vector(to_unsigned(s_cycle - 1, 3)) = "110";
+	--s_vram_bkg_inc <= std_logic_vector(to_unsigned(s_cycle - 1, 3)) = "110";
 	s_out_color <= s_palette_color and 6x"30" when s_greyscale = '1' else s_palette_color;
 	s_out_data <= s_color_emphasize & s_out_color;
 	
@@ -1409,7 +1410,6 @@ begin
 	s_attr_addr <= "0010" & s_vram_addr_v(11 downto 10) & "1111" & s_vram_addr_v(9 downto 7) & s_vram_addr_v(4 downto 2);
 	s_tile_lo_addr <= "000" & s_background_half & s_tile_index & '0' & s_vram_addr_v(14 downto 12);
 	s_tile_hi_addr <= "000" & s_background_half & s_tile_index & '1' & s_vram_addr_v(14 downto 12);
-	s_vassign <= (s_cycle >= 280) and (s_cycle <= 304) and s_prescan_line;
 	s_background_pixel <= s_th_q(s_fine_scroll_x) & s_tl_q(s_fine_scroll_x) when (s_enable_background = '1') and ((s_render_first_bkg_col = '1') or (s_xpos(7 downto 3) /= "00000")) else "00";
 	s_background_palette_index <= s_bh_q(s_fine_scroll_x) & s_bl_q(s_fine_scroll_x);
 	s_palette_color <= s_palette_mem(to_pal_idx(s_palette_index));
