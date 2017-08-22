@@ -14,3 +14,4 @@ nes.map
 *.hex
 nes_description.txt
 output_file.map
+nes.qws
