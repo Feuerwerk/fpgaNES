@@ -42,7 +42,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 15.1.1
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "18:38:44  FEBRUARY 12, 2016"
-set_global_assignment -name LAST_QUARTUS_VERSION "17.0.0 Lite Edition"
+set_global_assignment -name LAST_QUARTUS_VERSION "17.1.0 Lite Edition"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name SMART_RECOMPILE ON
 
@@ -435,40 +435,6 @@ set_instance_assignment -name POST_FIT_CONNECT_TO_SLD_NODE_ENTITY_PORT crc[27] -
 set_instance_assignment -name POST_FIT_CONNECT_TO_SLD_NODE_ENTITY_PORT crc[28] -to auto_signaltap_0|gnd -section_id auto_signaltap_0
 set_instance_assignment -name POST_FIT_CONNECT_TO_SLD_NODE_ENTITY_PORT crc[29] -to auto_signaltap_0|gnd -section_id auto_signaltap_0
 set_instance_assignment -name POST_FIT_CONNECT_TO_SLD_NODE_ENTITY_PORT crc[31] -to auto_signaltap_0|vcc -section_id auto_signaltap_0
-set_global_assignment -name VHDL_FILE common.vhd
-set_global_assignment -name VHDL_FILE nes.vhd
-set_global_assignment -name VHDL_FILE cpu.vhd
-set_global_assignment -name VHDL_FILE ppu.vhd
-set_global_assignment -name VHDL_FILE apu.vhd
-set_global_assignment -name VHDL_FILE vga.vhd
-set_global_assignment -name VHDL_FILE sequencer.vhd
-set_global_assignment -name VHDL_FILE data_path.vhd
-set_global_assignment -name VHDL_FILE periphery_ctrl.vhd
-set_global_assignment -name VHDL_FILE master_ctrl.vhd
-set_global_assignment -name VHDL_FILE i2s.vhd
-set_global_assignment -name VHDL_FILE i2c.vhd
-set_global_assignment -name VHDL_FILE i2c_master.vhd
-set_global_assignment -name VHDL_FILE hex_digit.vhd
-set_global_assignment -name VHDL_FILE biquad.vhd
-set_global_assignment -name VHDL_FILE debounce.vhd
-set_global_assignment -name QIP_FILE progmem.qip
-set_global_assignment -name QIP_FILE datamem.qip
-set_global_assignment -name QIP_FILE frmmem.qip
-set_global_assignment -name QIP_FILE spritemem.qip
-set_global_assignment -name QIP_FILE soamem.qip
-set_global_assignment -name QIP_FILE videorom.qip
-set_global_assignment -name QIP_FILE videomem.qip
-set_global_assignment -name QIP_FILE master_pll.qip
-set_global_assignment -name SIP_FILE master_pll.sip
-set_global_assignment -name QIP_FILE audio_pll.qip
-set_global_assignment -name SIP_FILE audio_pll.sip
-set_global_assignment -name QIP_FILE vga_pll.qip
-set_global_assignment -name SIP_FILE vga_pll.sip
-set_global_assignment -name QIP_FILE master_reconfig.qip
-set_global_assignment -name SIP_FILE master_reconfig.sip
-set_global_assignment -name HEX_FILE test_videorom.hex
-set_global_assignment -name HEX_FILE test_progmem.hex
-set_global_assignment -name SIGNALTAP_FILE stp.stp
 set_instance_assignment -name IO_STANDARD "2.5 V" -to UART_TX
 set_instance_assignment -name IO_STANDARD "2.5 V" -to UART_RX
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_ADDR[12]
@@ -677,5 +643,39 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[21]
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_global_assignment -name VHDL_FILE common.vhd
+set_global_assignment -name VHDL_FILE nes.vhd
+set_global_assignment -name VHDL_FILE cpu.vhd
+set_global_assignment -name VHDL_FILE ppu.vhd
+set_global_assignment -name VHDL_FILE apu.vhd
+set_global_assignment -name VHDL_FILE vga.vhd
+set_global_assignment -name VHDL_FILE sequencer.vhd
+set_global_assignment -name VHDL_FILE data_path.vhd
+set_global_assignment -name VHDL_FILE periphery_ctrl.vhd
+set_global_assignment -name VHDL_FILE master_ctrl.vhd
+set_global_assignment -name VHDL_FILE i2s.vhd
+set_global_assignment -name VHDL_FILE i2c.vhd
+set_global_assignment -name VHDL_FILE i2c_master.vhd
+set_global_assignment -name VHDL_FILE hex_digit.vhd
+set_global_assignment -name VHDL_FILE biquad.vhd
+set_global_assignment -name VHDL_FILE debounce.vhd
+set_global_assignment -name QIP_FILE progmem.qip
+set_global_assignment -name QIP_FILE datamem.qip
+set_global_assignment -name QIP_FILE frmmem.qip
+set_global_assignment -name QIP_FILE spritemem.qip
+set_global_assignment -name QIP_FILE soamem.qip
+set_global_assignment -name QIP_FILE videorom.qip
+set_global_assignment -name QIP_FILE videomem.qip
+set_global_assignment -name QIP_FILE master_pll.qip
+set_global_assignment -name SIP_FILE master_pll.sip
+set_global_assignment -name QIP_FILE audio_pll.qip
+set_global_assignment -name SIP_FILE audio_pll.sip
+set_global_assignment -name QIP_FILE vga_pll.qip
+set_global_assignment -name SIP_FILE vga_pll.sip
+set_global_assignment -name QIP_FILE master_reconfig.qip
+set_global_assignment -name SIP_FILE master_reconfig.sip
+set_global_assignment -name HEX_FILE test_videorom.hex
+set_global_assignment -name HEX_FILE test_progmem.hex
+set_global_assignment -name SIGNALTAP_FILE stp.stp
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name SLD_FILE db/stp_auto_stripped.stp

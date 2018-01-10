@@ -13,7 +13,6 @@ DEFINE altera_ver            ./../libraries/altera_ver/
 DEFINE lpm_ver               ./../libraries/lpm_ver/                   
 DEFINE sgate_ver             ./../libraries/sgate_ver/                 
 DEFINE altera_mf_ver         ./../libraries/altera_mf_ver/             
-DEFINE altera_lnsim_ver      ./../libraries/altera_lnsim_ver/          
 DEFINE cyclonev_ver          ./../libraries/cyclonev_ver/              
 DEFINE cyclonev_hssi_ver     ./../libraries/cyclonev_hssi_ver/         
 DEFINE cyclonev_pcie_hip_ver ./../libraries/cyclonev_pcie_hip_ver/     
