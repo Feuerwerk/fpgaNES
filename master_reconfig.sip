@@ -1,5 +1,5 @@
 set_global_assignment -entity "master_reconfig" -library "lib_master_reconfig" -name IP_TOOL_NAME "altera_pll_reconfig"
-set_global_assignment -entity "master_reconfig" -library "lib_master_reconfig" -name IP_TOOL_VERSION "17.1"
+set_global_assignment -entity "master_reconfig" -library "lib_master_reconfig" -name IP_TOOL_VERSION "18.0"
 set_global_assignment -entity "master_reconfig" -library "lib_master_reconfig" -name IP_TOOL_ENV "mwpim"
 set_global_assignment -library "lib_master_reconfig" -name SPD_FILE [file join $::quartus(sip_path) "master_reconfig.spd"]
 
