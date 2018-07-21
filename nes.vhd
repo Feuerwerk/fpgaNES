@@ -77,8 +77,7 @@ entity nes is
 		AUD_XCK : out std_logic;
 		SD_CLK : out std_logic;
 		SD_CMD : inout std_logic;
-		SD_DAT : inout std_logic_vector(3 downto 0);
-		GND : out std_logic_vector(10 downto 0)
+		SD_DAT : inout std_logic_vector(3 downto 0)
 	);
 end nes;
 
@@ -509,7 +508,6 @@ begin
 	CIC_RST_N <= '1';
 	SYS_CLK <= '0'; -- s_master_clk
 	M2 <= s_cpu_sync;
-	GND <= (others => '0');
 	
 	ROMSEL_N <= s_prg_cs_n;
 	CPU_ADDR <= s_prg_addr;

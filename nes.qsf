@@ -180,81 +180,70 @@ set_location_assignment PIN_Y8 -to GPIO[19]
 set_location_assignment PIN_AA7 -to GPIO[20]
 set_location_assignment PIN_AA6 -to GPIO[21]
 
-set_location_assignment PIN_E10 -to PPU_ADDR[12]
-set_location_assignment PIN_E11 -to PPU_ADDR[13]
-set_location_assignment PIN_N12 -to PPU_ADDR[10]
-set_location_assignment PIN_M12 -to PPU_ADDR[11]
-set_location_assignment PIN_M11 -to PPU_ADDR[9]
-set_location_assignment PIN_L11 -to PPU_ADDR[8]
-set_location_assignment PIN_H18 -to PPU_ADDR[7]
-set_location_assignment PIN_H17 -to PPU_A13_N
-set_location_assignment PIN_L12 -to GND[5]
-set_location_assignment PIN_K11 -to GND[4]
-set_location_assignment PIN_H15 -to PPU_RD_N
-set_location_assignment PIN_J16 -to PPU_ADDR[6]
-set_location_assignment PIN_J12 -to PPU_ADDR[5]
-set_location_assignment PIN_J11 -to PPU_ADDR[4]
-set_location_assignment PIN_G16 -to PPU_ADDR[3]
-set_location_assignment PIN_G17 -to PPU_ADDR[2]
-set_location_assignment PIN_G12 -to PPU_ADDR[0]
-set_location_assignment PIN_F12 -to PPU_ADDR[1]
+set_location_assignment PIN_B21 -to PPU_ADDR[12]
+set_location_assignment PIN_B20 -to PPU_ADDR[13]
+set_location_assignment PIN_C18 -to PPU_ADDR[10]
+set_location_assignment PIN_C19 -to PPU_ADDR[11]
+set_location_assignment PIN_B17 -to PPU_ADDR[9]
+set_location_assignment PIN_C17 -to PPU_ADDR[8]
+set_location_assignment PIN_A22 -to PPU_ADDR[7]
+set_location_assignment PIN_A23 -to PPU_A13_N
+set_location_assignment PIN_G17 -to PPU_RD_N
+set_location_assignment PIN_G12 -to PPU_ADDR[6]
+set_location_assignment PIN_F12 -to PPU_ADDR[5]
+set_location_assignment PIN_E18 -to PPU_ADDR[4]
+set_location_assignment PIN_F18 -to PPU_ADDR[3]
+set_location_assignment PIN_F16 -to PPU_ADDR[2]
+set_location_assignment PIN_E13 -to PPU_ADDR[0]
+set_location_assignment PIN_E15 -to PPU_ADDR[1]
 
-set_location_assignment PIN_C9 -to CIRAM_CE_N
-set_location_assignment PIN_B9 -to CIRAM_A10
-set_location_assignment PIN_D10 -to IRQ_N
-set_location_assignment PIN_C10 -to CIC_TOMB
-set_location_assignment PIN_A12 -to GND[10]
-set_location_assignment PIN_B11 -to GND[9]
-set_location_assignment PIN_B10 -to GND[8]
-set_location_assignment PIN_A11 -to PPU_DIR
-set_location_assignment PIN_A19 -to PPU_DATA[0]
-set_location_assignment PIN_A18 -to PPU_DATA[1]
-set_location_assignment PIN_C20 -to PPU_DATA[2]
-set_location_assignment PIN_B19 -to PPU_DATA[3]
-set_location_assignment PIN_B15 -to PPU_DATA[7]
-set_location_assignment PIN_C15 -to PPU_DATA[6]
-set_location_assignment PIN_B22 -to PPU_DATA[5]
-set_location_assignment PIN_A21 -to PPU_DATA[4]
-set_location_assignment PIN_G15 -to GND[7]
-set_location_assignment PIN_G14 -to GND[6]
+set_location_assignment PIN_C22 -to CIRAM_CE_N
+set_location_assignment PIN_A14 -to CIRAM_A10
+set_location_assignment PIN_B12 -to IRQ_N
+set_location_assignment PIN_B14 -to CIC_TOMB
+set_location_assignment PIN_A24 -to PPU_DIR
+set_location_assignment PIN_D18 -to PPU_DATA[0]
+set_location_assignment PIN_E20 -to PPU_DATA[1]
+set_location_assignment PIN_D21 -to PPU_DATA[2]
+set_location_assignment PIN_B24 -to PPU_DATA[3]
+set_location_assignment PIN_D16 -to PPU_DATA[7]
+set_location_assignment PIN_D17 -to PPU_DATA[6]
+set_location_assignment PIN_E19 -to PPU_DATA[5]
+set_location_assignment PIN_D20 -to PPU_DATA[4]
 
-set_location_assignment PIN_A8 -to CPU_DATA[0]
-set_location_assignment PIN_A9 -to CIC_CLK
-set_location_assignment PIN_F16 -to CIC_RST_N
-set_location_assignment PIN_E15 -to PPU_WR_N
-set_location_assignment PIN_E13 -to ROMSEL_N
-set_location_assignment PIN_D13 -to CPU_ADDR[14]
-set_location_assignment PIN_C14 -to CPU_ADDR[13]
-set_location_assignment PIN_D15 -to CPU_ADDR[12]
-set_location_assignment PIN_E16 -to GND[1]
-set_location_assignment PIN_D16 -to GND[0]
-set_location_assignment PIN_D18 -to SYS_CLK
-set_location_assignment PIN_D17 -to M2
-set_location_assignment PIN_E20 -to CPU_ADDR[11]
-set_location_assignment PIN_E19 -to CPU_ADDR[10]
-set_location_assignment PIN_D21 -to CPU_ADDR[9]
-set_location_assignment PIN_D20 -to CPU_ADDR[8]
-set_location_assignment PIN_B24 -to CPU_ADDR[6]
-set_location_assignment PIN_A24 -to CPU_ADDR[7]
+set_location_assignment PIN_A21 -to CPU_DATA[0]
+set_location_assignment PIN_D15 -to CIC_CLK
+set_location_assignment PIN_C14 -to CIC_RST_N
+set_location_assignment PIN_G16 -to PPU_WR_N
+set_location_assignment PIN_J12 -to ROMSEL_N
+set_location_assignment PIN_E11 -to CPU_ADDR[14]
+set_location_assignment PIN_E10 -to CPU_ADDR[13]
+set_location_assignment PIN_D12 -to CPU_ADDR[12]
+set_location_assignment PIN_M12 -to SYS_CLK
+set_location_assignment PIN_N12 -to M2
+set_location_assignment PIN_L11 -to CPU_ADDR[11]
+set_location_assignment PIN_H18 -to CPU_ADDR[10]
+set_location_assignment PIN_H17 -to CPU_ADDR[9]
+set_location_assignment PIN_L12 -to CPU_ADDR[8]
+set_location_assignment PIN_B9 -to CPU_ADDR[6]
+set_location_assignment PIN_C9 -to CPU_ADDR[7]
 
-set_location_assignment PIN_B12 -to CPU_DATA[2]
-set_location_assignment PIN_A13 -to CPU_DATA[1]
-set_location_assignment PIN_C23 -to CPU_DATA[3]
-set_location_assignment PIN_C22 -to CPU_DATA[4]
-set_location_assignment PIN_A14 -to CPU_DATA[5]
-set_location_assignment PIN_B14 -to CPU_DATA[6]
-set_location_assignment PIN_A23 -to CPU_DATA[7]
-set_location_assignment PIN_A22 -to CPU_DIR
-set_location_assignment PIN_A17 -to CPU_ADDR[5]
-set_location_assignment PIN_A16 -to CPU_ADDR[4]
-set_location_assignment PIN_C17 -to CPU_ADDR[3]
-set_location_assignment PIN_B17 -to CPU_ADDR[2]
-set_location_assignment PIN_C19 -to CPU_ADDR[1]
-set_location_assignment PIN_C18 -to CPU_ADDR[0]
-set_location_assignment PIN_B21 -to CPU_RW
-set_location_assignment PIN_B20 -to CIC_TOPAK
-set_location_assignment PIN_L8 -to GND[3]
-set_location_assignment PIN_K9 -to GND[2]
+set_location_assignment PIN_C15 -to CPU_DATA[2]
+set_location_assignment PIN_B22 -to CPU_DATA[1]
+set_location_assignment PIN_B15 -to CPU_DATA[3]
+set_location_assignment PIN_B19 -to CPU_DATA[4]
+set_location_assignment PIN_C20 -to CPU_DATA[5]
+set_location_assignment PIN_A11 -to CPU_DATA[6]
+set_location_assignment PIN_B10 -to CPU_DATA[7]
+set_location_assignment PIN_B11 -to CPU_DIR
+set_location_assignment PIN_D10 -to CPU_ADDR[5]
+set_location_assignment PIN_C10 -to CPU_ADDR[4]
+set_location_assignment PIN_K11 -to CPU_ADDR[3]
+set_location_assignment PIN_H15 -to CPU_ADDR[2]
+set_location_assignment PIN_A12 -to CPU_ADDR[1]
+set_location_assignment PIN_J16 -to CPU_ADDR[0]
+set_location_assignment PIN_J11 -to CPU_RW
+set_location_assignment PIN_D13 -to CIC_TOPAK
 
 set_location_assignment PIN_L9 -to UART_TX
 set_location_assignment PIN_M9 -to UART_RX
@@ -445,8 +434,6 @@ set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_ADDR[9]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_ADDR[8]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_ADDR[7]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_A13_N
-set_instance_assignment -name IO_STANDARD "2.5 V" -to GND[5]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to GND[4]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_RD_N
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_ADDR[6]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_ADDR[5]
@@ -459,9 +446,6 @@ set_instance_assignment -name IO_STANDARD "2.5 V" -to CIRAM_CE_N
 set_instance_assignment -name IO_STANDARD "2.5 V" -to CIC_TOMB
 set_instance_assignment -name IO_STANDARD "2.5 V" -to CIRAM_A10
 set_instance_assignment -name IO_STANDARD "2.5 V" -to IRQ_N
-set_instance_assignment -name IO_STANDARD "2.5 V" -to GND[10]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to GND[9]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to GND[8]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_DIR
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_DATA[0]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_DATA[1]
@@ -471,8 +455,6 @@ set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_DATA[7]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_DATA[6]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_DATA[5]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to PPU_DATA[4]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to GND[7]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to GND[6]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to CPU_DATA[0]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to CIC_CLK
 set_instance_assignment -name IO_STANDARD "2.5 V" -to CIC_RST_N
@@ -481,8 +463,6 @@ set_instance_assignment -name IO_STANDARD "2.5 V" -to ROMSEL_N
 set_instance_assignment -name IO_STANDARD "2.5 V" -to CIC_TOPAK
 set_instance_assignment -name IO_STANDARD "2.5 V" -to CPU_ADDR[14]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to CPU_ADDR[13]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to GND[1]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to GND[0]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to SYS_CLK
 set_instance_assignment -name IO_STANDARD "2.5 V" -to M2
 set_instance_assignment -name IO_STANDARD "2.5 V" -to CPU_ADDR[12]
@@ -507,8 +487,6 @@ set_instance_assignment -name IO_STANDARD "2.5 V" -to CPU_ADDR[2]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to CPU_ADDR[1]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to CPU_ADDR[0]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to CPU_RW
-set_instance_assignment -name IO_STANDARD "2.5 V" -to GND[3]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to GND[2]
 set_instance_assignment -name IO_STANDARD LVDS -to CLOCK_125_p
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to CLOCK_50_B5B
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to CLOCK_50_B6A
@@ -640,9 +618,6 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[18]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[19]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[20]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[21]
-set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
-set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
-set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_global_assignment -name VHDL_FILE common.vhd
 set_global_assignment -name VHDL_FILE nes.vhd
 set_global_assignment -name VHDL_FILE cpu.vhd
@@ -677,5 +652,8 @@ set_global_assignment -name SIP_FILE master_reconfig.sip
 set_global_assignment -name HEX_FILE test_videorom.hex
 set_global_assignment -name HEX_FILE test_progmem.hex
 set_global_assignment -name SIGNALTAP_FILE stp.stp
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_global_assignment -name SLD_FILE db/stp_auto_stripped.stp
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
