@@ -66,3 +66,56 @@ What works a little bit
 What is currently not implemented:
 
 - low / high pass filter (i added both with the equations blargg published but for some reason they don’t work)
+
+
+# How to load games with this solution
+
+To start a game (or test rom) there are two solutions to achieve this. Either by simulating the gamepak logic within the fpga which is very simple especially for the early (and more simple) gamepaks e.g. Super Mario Brothers 1 / Donkey Kong and so on. The other way is to build some kind of hardware adapter to connect the gamepak (based on 5V logic) to the fpga, which is in my case 3.3V logic. Since i always wanted to play with the original gamepaks i decided to go with the apdapter solution.
+
+### First adapter board
+My first solution was based on 8x SN74LVC8T245DWR logic level shifters on a piece of perfboard, but since my knowledge about electronics is very limited i missed things like serial.
+termination of the bus lines and short traces of the decoupling caps.
+
+
+A picture of the adapter board connected to the devkit board. It also utilizes the GPIO-HSTC daughter board from Terrasic to get more gpio pins on this standard 40 pin header.
+
+![First adapter board connected to dekit](doc/IMG_0918.jpeg)
+
+
+Top of the board:
+
+![First adapter top](doc/IMG_0919.jpeg)
+
+
+Bottom of the board:
+
+![First adapter bottom](doc/IMG_0920.jpeg)
+
+
+This solution worked well for simple gamepaks like Super Mario Brothers 1 which don't write back the gamepak to switch rom banks for example. Dr. Mario worked, but with various glitches and more complex gamepaks like Super Mario Brothers 3 simply didn't start.
+
+### Second adapter board
+But since i wanted to also run the more complex gamepaks **and** use an universal gamepak with a sdcard slot to bring the fantastic tests roms from http://www.nesdev.com to my fpgaNES to find all the small inaccuracies and bugs in my solution i needed a better adapter board, which means i had to improve my electronics and soldering skills.
+
+
+This is a picture of my second adapter board which uses much shorter cables and the pcb was made by a manufacturer. This solution worked quite well, more advanced gamepaks like Dr. Mario and Mario Brothers 3 works flawlessly (except for the bugs in my vhdl code) and i could run test roms from the EverDrive N8 game pak.
+
+![Second adapter board connect to dekit](doc/IMG_1074.jpeg)
+
+
+### Third adapter board
+Here you can see my third adapter board. This board have a Samtex QSH-090-01-L-D-A connector so i don't need the GPIO-HSTC daughter board and directly connect to the devkit board and added ports for the original game controllers.
+
+#### Side view
+
+![Adapter PCB with inserted EverDrive N8 Cardridge](doc/IMG_1418.jpeg)
+
+#### Top view
+
+![Adapter PCB attached to Cyclone V devkit board](doc/IMG_1419.jpeg)
+
+
+### Current status
+It seems i made some mistakes with my third adapter board i didn't find so far. Original gamepaks works great, no problems so far but the EverDrive N8 don't want to work any more. When i compare the signals of an original gamepak with the signals of the EverDrive N8 on my scope, i can see that orignal gamepaks produce since and clean 5V signals whereas the EverDrive N8 sometimes produce more unclean signals near 3.3V. I have to investigate further to find a solution.
+
+At the moment the layout of the board is done in eagle. After i found by bugs i will switch to kicad to release it here for interested ones.
